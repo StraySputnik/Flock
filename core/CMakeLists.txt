@@ -10,6 +10,8 @@ add_library(
         include/collect/vector.hpp
         include/collect/string.hpp
         src/collect/string.cpp
+        include/collect/map.hpp
+        include/collect/list.hpp
 )
 
 target_include_directories(${PROJECT_NAME} PUBLIC ${PROJECT_SOURCE_DIR}/src ${PROJECT_SOURCE_DIR}/include)

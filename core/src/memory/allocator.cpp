@@ -62,7 +62,7 @@ namespace flock::memory {
         system_deallocate(ptr);
     }
 
-    void set_allocator(allocator *allocator) {
+    void push_allocator(allocator *allocator) {
         if (!head) {
             head        = (allocator_node *)system_allocate(sizeof(allocator_node));
             head->alloc = allocator;
@@ -84,7 +84,7 @@ namespace flock::memory {
         return head->alloc;
     }
 
-    void reset_allocator() {
+    void pop_allocator() {
         allocator_node *node = head;
         head                 = node->next;
         system_deallocate(node);
@@ -104,7 +104,9 @@ namespace flock::memory {
         allocator.size_   = size;
         allocator.index_  = 0;
 
-        return std::move(allocator);
+        push_allocator(&allocator);
+
+        return allocator;
     }
 
     arena_allocator::arena_allocator(arena_allocator &&other) noexcept {
@@ -117,6 +119,11 @@ namespace flock::memory {
         other.region_    = nullptr;
         other.size_      = 0;
         other.index_     = 0;
+
+        if (get_allocator() == &other) {
+            pop_allocator();
+            push_allocator(this);
+        }
     }
 
     arena_allocator &arena_allocator::operator=(arena_allocator &&other) noexcept {
@@ -136,10 +143,19 @@ namespace flock::memory {
         other.size_      = 0;
         other.index_     = 0;
 
+        if (get_allocator() == &other) {
+            pop_allocator();
+            push_allocator(this);
+        }
+
         return *this;
     }
 
     arena_allocator::~arena_allocator() {
+        if (get_allocator() == this) {
+            pop_allocator();
+        }
+
         memory::deallocate(allocator_, region_, size_);
     }
 

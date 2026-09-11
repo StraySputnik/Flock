@@ -8,7 +8,6 @@ using namespace flock::memory;
 
 i32 main() {
     arena_allocator alloc = std::move(arena_allocator::create(1024).get());
-    set_allocator(&alloc);
 
     string str = string::from("Hello, World!");
 
@@ -29,6 +28,4 @@ i32 main() {
     }
 
     printf("\n");
-
-    reset_allocator();
 }

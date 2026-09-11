@@ -40,7 +40,7 @@ namespace flock {
 
         template <typename... Args>
             requires (std::same_as<Args, T> && ...)
-        static vector with_elements(Args... arguments) {
+        static vector with_elements(Args... args) {
             vector vec{};
 
             vec.allocator_ = memory::get_allocator();
@@ -48,7 +48,7 @@ namespace flock {
             vec.len_       = 0;
             vec.cap_       = INITIAL_VECTOR_SIZE;
 
-            (vec.push(arguments), ...);
+            (vec.push(args), ...);
 
             return vec;
         }
@@ -128,7 +128,7 @@ namespace flock {
         }
 
         bool is_empty() const {
-            return cap_ == 0;
+            return len_ == 0;
         }
 
         const T *first() const {
@@ -286,10 +286,10 @@ namespace flock {
         }
 
         void removen(usize index, usize num) {
-            FLK_ASSERT(index <= len_, "Out of bounds index");
+            FLK_ASSERT(index + num - 1 <= len_, "Out of bounds index");
 
             if (index == len_) {
-                pop();
+                resize(len_ - num);
                 return;
             }
 
