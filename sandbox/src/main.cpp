@@ -1,5 +1,6 @@
 #include <cstdio>
 
+#include "collect/list.hpp"
 #include "memory/allocator.hpp"
 #include "collect/string.hpp"
 
@@ -9,23 +10,12 @@ using namespace flock::memory;
 i32 main() {
     arena_allocator alloc = std::move(arena_allocator::create(1024).get());
 
-    string str = string::from("Hello, World!");
+    list<i32> list = ::list<i32>::create();
+    list.push_last(1);
+    list.push_last(2);
+    list.push_last(3);
 
-    str.insert_str(5, string::from("pe"));
-
-    str.remove(5);
-    str.remove(5);
-    str.remove(5);
-
-    str.pop();
-    str.make_lowercase();
-
-    str.replace(string::from("hello"), string::from("hi"));
-    str.replace(string::from("world"), string::from("mom"));
-
-    for (usize i = 0; i < str.len(); i++) {
-        printf("%c", str[i]);
+    for (usize i = 0; i < list.len(); i++) {
+        printf("%i\n", list[i]);
     }
-
-    printf("\n");
 }
