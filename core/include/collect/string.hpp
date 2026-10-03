@@ -1,75 +1,43 @@
-#ifndef FLOCK_STRING_HPP
-#define FLOCK_STRING_HPP
+#pragma once
 
 #include "common.hpp"
-#include "maybe.hpp"
+#include "hash.hpp"
 #include "vector.hpp"
 
-namespace flock {
-    class FLK_API string {
-        vector<char> vec_ = vector<char>::create();
-
-    public:
-        static string create();
-        static string with_cap(usize capacity);
-        static string from(const char *str);
-
-        string(const string &other)     = default;
-        string(string &&other) noexcept = default;
-
-        string &operator=(const string &other)     = default;
-        string &operator=(string &&other) noexcept = default;
-
-        ~string() = default;
-
-        usize len() const;
-        usize cap() const;
-        bool  is_empty() const;
-
-        const char *first() const;
-        char *      first();
-
-        const char *last() const;
-        char *      last();
-
-        const char *get(usize index) const;
-        char *      get(usize index);
-
-        const char &operator[](usize index) const;
-        char &      operator[](usize index);
-
-        void reserve(usize additional);
-        void shrink_to_fit();
-        void shrink_to(usize new_cap);
-        void resize(usize new_len, char value = {});
-
-        void push(char value = {});
-        char pop();
-        void insert(usize index, char value = {});
-        void insert_str(usize index, const string &str);
-        char remove(usize index);
-        void removen(usize index, usize num);
-        void append(const string &other);
-
-        bool         starts_with(const string &str) const;
-        bool         ends_with(const string &str) const;
-        bool         contains(const string &str) const;
-        maybe<usize> find(const string &str) const;
-
-        void trim();
-        void trim_start();
-        void trim_end();
-        void make_uppercase();
-        void make_lowercase();
-
-        void replace(const string &str, const string &replace);
-        void replacen(const string &str, const string &replace, usize num);
-
-        void clear();
-
-    private:
-        string() = default;
+namespace Flock {
+    struct String {
+        Vector<char> chars = {};
     };
-}
 
-#endif //FLOCK_STRING_HPP
+    String string_create();
+    String string_with_cap(usize cap);
+    String string_with_len(usize len);
+    String string_from(const char *c_str);
+    void   string_delete(String *string);
+
+    void reserve(String *string, usize cap);
+    void shrink_to(String *string, usize cap);
+    void shrink_to_fit(String *string);
+    void resize(String *string, usize len);
+
+    usize      len(const String *string);
+    usize      cap(const String *string);
+    Allocator *allocator(const String *string);
+
+    char *get(String *string, usize idx);
+    char *first(String *string);
+    char *last(String *string);
+
+    const char *get(const String *string, usize idx);
+    const char *first(const String *string);
+    const char *last(const String *string);
+
+    void push(String *string, char element);
+    void append(String *string, const char *c_str);
+    void pop(String *string);
+
+    bool equal(const String *lhs, const String *rhs);
+    bool nequal(const String *lhs, const String *rhs);
+
+    Hash hash(const String *string);
+}

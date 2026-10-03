@@ -9,6 +9,8 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/out/$<CONFIG>)
 include(cmake/CPM.cmake)
 
 add_compile_options(
+        -Wall
+        -Werror
         -fsanitize=address
 )
 

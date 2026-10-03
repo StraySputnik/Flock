@@ -1,36 +1,24 @@
-#ifndef FLOCK_MAYBE_HPP
-#define FLOCK_MAYBE_HPP
+#pragma once
 
 #include "common.hpp"
 
-namespace flock {
+namespace Flock {
     template <typename T>
-    class maybe {
-        T    value_     = {};
-        bool has_value_ = false;
-
-    public:
-        maybe() = default;
-
-        maybe(T value) : value_(value), has_value_(true) {
-        }
-
-        bool has_value() const {
-            return has_value_;
-        }
-
-        operator bool() const {
-            return has_value();
-        }
-
-        T get() const {
-            if (!has_value()) {
-                FLK_ASSERT(false, "Called get on invalid maybe");
-            }
-
-            return value_;
-        }
+    struct Maybe {
+        T    value     = {};
+        bool has_value = false;
     };
-}
 
-#endif //FLOCK_MAYBE_HPP
+    template <typename T>
+    Maybe<T> maybe(T value) {
+        return {
+            .value     = value,
+            .has_value = true,
+        };
+    }
+
+    template <typename T>
+    Maybe<T> maybe() {
+        return {};
+    }
+}

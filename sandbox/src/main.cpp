@@ -1,21 +1,34 @@
-#include <cstdio>
-
-#include "collect/list.hpp"
+#include "common.hpp"
+#include "collect/map.hpp"
 #include "memory/allocator.hpp"
-#include "collect/string.hpp"
 
-using namespace flock;
-using namespace flock::memory;
+using namespace Flock;
 
 i32 main() {
-    arena_allocator alloc = std::move(arena_allocator::create(1024).get());
+    Allocator allocator = allocator_create(AllocatorType::BumpAllocator, 2952).value;
+    push_allocator(&allocator);
 
-    list<i32> list = ::list<i32>::create();
-    list.push_last(1);
-    list.push_last(2);
-    list.push_last(3);
+    auto map = map_create<char, i32>();
+    insert(&map, 'A', 1);
+    insert(&map, 'B', 2);
+    insert(&map, 'C', 3);
+    insert(&map, 'D', 4);
+    insert(&map, 'E', 5);
+    insert(&map, 'F', 6);
+    insert(&map, 'G', 7);
+    insert(&map, 'H', 8);
+    insert(&map, 'I', 9);
+    insert(&map, 'J', 10);
+    insert(&map, 'K', 11);
+    insert(&map, 'L', 12);
+    insert(&map, 'M', 13);
+    insert(&map, 'N', 14);
 
-    for (usize i = 0; i < list.len(); i++) {
-        printf("%i\n", list[i]);
+    for (char c = 'A'; c < 'O'; c++) {
+        printf("%c: %i\n", c, *get(&map, c));
     }
+
+    map_delete(&map);
+
+    pop_allocator();
 }

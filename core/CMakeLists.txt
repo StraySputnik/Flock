@@ -4,14 +4,13 @@ add_library(
         ${PROJECT_NAME} SHARED
         src/common.hpp
         include/memory/allocator.hpp
-        include/maybe.hpp
-        include/result.hpp
         src/memory/allocator.cpp
+        include/maybe.hpp
         include/collect/vector.hpp
         include/collect/string.hpp
         src/collect/string.cpp
+        include/hash.hpp
         include/collect/map.hpp
-        include/collect/list.hpp
 )
 
 target_include_directories(${PROJECT_NAME} PUBLIC ${PROJECT_SOURCE_DIR}/src ${PROJECT_SOURCE_DIR}/include)

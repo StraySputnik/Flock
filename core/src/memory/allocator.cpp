@@ -1,200 +1,164 @@
 #include "memory/allocator.hpp"
 
-#include <algorithm>
-#include <cstdlib>
 #include <cstring>
 
-namespace flock::memory {
-    // empty namespace to enforce internal linkage
-    namespace {
-        struct allocator_node {
-            allocator *     alloc;
-            allocator_node *next;
-        };
-    }
-
-    static allocator_node *head = nullptr;
-
-    void *system_allocate(usize size) {
+namespace Flock {
+    void *sys_alloc(usize size) {
         return malloc(size);
     }
 
-    void *system_reallocate(void *ptr, usize dest_size) {
-        return realloc(ptr, dest_size);
+    void *sys_realloc(void *allocation, usize size) {
+        return ::realloc(allocation, size);
     }
 
-    void system_deallocate(void *ptr) {
-        free(ptr);
+    void sys_free(void *allocation) {
+        ::free(allocation);
     }
 
-    alloc_result allocate(allocator *allocator, usize size) {
-        if (allocator) {
-            return allocator->allocate(size);
+    Maybe<Allocator> allocator_create(AllocatorType type, usize size) {
+        void *allocation = sys_alloc(size);
+        if (!allocation) {
+            return {};
         }
 
-        void *ptr = system_allocate(size);
-        if (!ptr) {
-            return error::ALLOCATION_FAILED;
+        Allocator allocator = {};
+        allocator.type      = type;
+        allocator.ptr       = (byte *)allocation;
+        allocator.size      = size;
+
+        switch (type) {
+        case AllocatorType::BumpAllocator:
+            allocator.bump = {};
+            break;
+        default:
+            PANIC();
         }
 
-        return (byte *)ptr;
+        return maybe(allocator);
     }
 
-    alloc_result reallocate(allocator *allocator, byte *ptr, usize src_size, usize dest_size) {
-        if (allocator) {
-            return allocator->reallocate(ptr, src_size, dest_size);
-        }
+    void allocator_delete(Allocator *allocator) {
+        sys_free(allocator->ptr);
 
-        void *new_ptr = system_reallocate(ptr, dest_size);
-        if (!new_ptr) {
-            return error::ALLOCATION_FAILED;
-        }
-
-        return (byte *)new_ptr;
-    }
-
-    void deallocate(allocator *allocator, byte *ptr, usize size) {
-        if (allocator) {
-            allocator->deallocate(ptr, size);
-            return;
-        }
-
-        system_deallocate(ptr);
-    }
-
-    void push_allocator(allocator *allocator) {
-        if (!head) {
-            head        = (allocator_node *)system_allocate(sizeof(allocator_node));
-            head->alloc = allocator;
-            head->next  = nullptr;
-        } else {
-            auto *node  = (allocator_node *)system_allocate(sizeof(allocator_node));
-            node->alloc = allocator;
-            node->next  = head;
-
-            head = node;
+        switch (allocator->type) {
+        case AllocatorType::BumpAllocator:
+            allocator->bump = {};
+            break;
+        default:
+            PANIC();
         }
     }
 
-    allocator *get_allocator() {
-        if (!head) {
+    static void *bump_alloc(Allocator *allocator, usize size, usize align) {
+        auto        allocator_ptr    = allocator->ptr;
+        const usize allocator_size   = allocator->size;
+        const usize allocator_offset = allocator->bump.offset;
+
+        usize allocation_offset = align - (usize)(allocator_ptr + allocator_offset) % align;
+        allocation_offset       = allocation_offset == align ? 0 : allocation_offset;
+
+        if (allocator_size < allocator_offset + allocation_offset + size) {
             return nullptr;
         }
 
-        return head->alloc;
-    }
-
-    void pop_allocator() {
-        allocator_node *node = head;
-        head                 = node->next;
-        system_deallocate(node);
-    }
-
-    result<arena_allocator, error> arena_allocator::create(usize size) {
-        arena_allocator allocator;
-
-        allocator.allocator_ = get_allocator();
-
-        alloc_result res = memory::allocate(allocator.allocator_, size);
-        if (!res) {
-            return res.get_err();
-        }
-
-        allocator.region_ = res.get();
-        allocator.size_   = size;
-        allocator.index_  = 0;
-
-        push_allocator(&allocator);
-
-        return allocator;
-    }
-
-    arena_allocator::arena_allocator(arena_allocator &&other) noexcept {
-        allocator_ = other.allocator_;
-        region_    = other.region_;
-        size_      = other.size_;
-        index_     = other.index_;
-
-        other.allocator_ = nullptr;
-        other.region_    = nullptr;
-        other.size_      = 0;
-        other.index_     = 0;
-
-        if (get_allocator() == &other) {
-            pop_allocator();
-            push_allocator(this);
-        }
-    }
-
-    arena_allocator &arena_allocator::operator=(arena_allocator &&other) noexcept {
-        if (this == &other) {
-            return *this;
-        }
-
-        memory::deallocate(allocator_, region_, size_);
-
-        allocator_ = other.allocator_;
-        region_    = other.region_;
-        size_      = other.size_;
-        index_     = other.index_;
-
-        other.allocator_ = nullptr;
-        other.region_    = nullptr;
-        other.size_      = 0;
-        other.index_     = 0;
-
-        if (get_allocator() == &other) {
-            pop_allocator();
-            push_allocator(this);
-        }
-
-        return *this;
-    }
-
-    arena_allocator::~arena_allocator() {
-        if (get_allocator() == this) {
-            pop_allocator();
-        }
-
-        memory::deallocate(allocator_, region_, size_);
-    }
-
-    void arena_allocator::clear() {
-        index_ = 0;
-    }
-
-    alloc_result arena_allocator::allocate(usize size) {
-        return allocate(size, alignof(usize));
-    }
-
-    alloc_result arena_allocator::allocate(usize size, usize alignment) {
-        usize offset = alignment - (usize)(region_ + index_) % alignment;
-        offset       = offset == alignment ? 0 : offset;
-
-        if (size_ < index_ + offset + size) {
-            return error::MEMORY_OVERFLOW;
-        }
-
-        byte *ptr = region_ + index_ + offset;
-        index_    += offset + size;
+        void *ptr              = allocator_ptr + allocator_offset + allocation_offset;
+        allocator->bump.offset += allocation_offset + size;
 
         return ptr;
     }
 
-    alloc_result arena_allocator::reallocate(byte *ptr, usize src_size, usize dest_size) {
-        alloc_result result = allocate(dest_size);
-        if (!result) {
-            return result;
+    static void *bump_realloc(Allocator *allocator, const void *src, usize src_size, usize dest_size, usize align) {
+        void *dest = bump_alloc(allocator, dest_size, align);
+        if (!dest) {
+            return nullptr;
         }
 
-        byte *      dest_ptr = result.get();
         const usize min_size = src_size < dest_size ? src_size : dest_size;
-        memcpy(dest_ptr, ptr, min_size);
+        memcpy(dest, src, min_size);
 
-        return dest_ptr;
+        return dest;
     }
 
-    void arena_allocator::deallocate(byte *ptr, usize size) {
+    static void bump_free(Allocator *allocator, void *allocation, usize size) {
         // No-op
+    }
+
+    void *alloc(Allocator *allocator, usize size, usize align) {
+        if (!allocator) {
+            return sys_alloc(size);
+        }
+
+        switch (allocator->type) {
+        case AllocatorType::BumpAllocator:
+            return bump_alloc(allocator, size, align);
+            break;
+        default:
+            PANIC();
+        }
+    }
+
+    void *realloc(Allocator *allocator, void *src, usize src_size, usize dest_size, usize align) {
+        if (!allocator) {
+            return sys_realloc(src, dest_size);
+        }
+
+        switch (allocator->type) {
+        case AllocatorType::BumpAllocator:
+            return bump_realloc(allocator, src, src_size, dest_size, align);
+            break;
+        default:
+            PANIC();
+        }
+    }
+
+    void free(Allocator *allocator, void *allocation, usize size) {
+        if (!allocator) {
+            return sys_free(allocation);
+        }
+
+        switch (allocator->type) {
+        case AllocatorType::BumpAllocator:
+            return bump_free(allocator, allocation, size);
+            break;
+        default:
+            PANIC();
+        }
+    }
+
+    namespace {
+        struct AllocatorNode {
+            Allocator *    allocator = nullptr;
+            AllocatorNode *next      = nullptr;
+        };
+    }
+
+    static AllocatorNode *base = nullptr;
+
+    void push_allocator(Allocator *allocator) {
+        void *ptr = sys_alloc(sizeof(AllocatorNode));
+        ASSERT(ptr, "Allocation failed");
+
+        auto *node      = (AllocatorNode *)ptr;
+        node->next      = base;
+        node->allocator = allocator;
+        base            = node;
+    }
+
+    void pop_allocator() {
+        if (!base) {
+            return;
+        }
+
+        AllocatorNode *next = base->next;
+        sys_free(base);
+        base = next;
+    }
+
+    Allocator *get_allocator() {
+        if (!base) {
+            return nullptr;
+        }
+
+        return base->allocator;
     }
 }
