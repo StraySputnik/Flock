@@ -229,3 +229,5 @@ namespace Flock {
         resize(vector, vector->len - 1);
     }
 }
+
+#define VECTOR_FOREACH(vec, v, func) for (usize i = 0; i < len((vec)); i++) { auto v = get((vec), i); func }

@@ -41,3 +41,5 @@ namespace Flock {
 
     Hash hash(const String *string);
 }
+
+#define STRING_FOREACH(str, c, func) for (usize i = 0; i < len((str)); i++) { char c = *get((str), i); func }

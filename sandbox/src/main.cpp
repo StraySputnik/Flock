@@ -1,11 +1,12 @@
 #include "common.hpp"
 #include "collect/map.hpp"
+#include "collect/string.hpp"
 #include "memory/allocator.hpp"
 
 using namespace Flock;
 
 i32 main() {
-    Allocator allocator = allocator_create(AllocatorType::BumpAllocator, 2952).value;
+    Allocator allocator = allocator_create(AllocatorType::BumpAllocator, 64'000).value;
     push_allocator(&allocator);
 
     auto map = map_create<char, i32>();
@@ -23,10 +24,12 @@ i32 main() {
     insert(&map, 'L', 12);
     insert(&map, 'M', 13);
     insert(&map, 'N', 14);
+    remove(&map, 'A');
 
-    for (char c = 'A'; c < 'O'; c++) {
-        printf("%c: %i\n", c, *get(&map, c));
-    }
+    MAP_FOREACH(
+        &map, c, const v,
+        printf("%c: %i\n", *c, *v);
+    );
 
     map_delete(&map);
 
