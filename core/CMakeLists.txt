@@ -11,6 +11,7 @@ add_library(
         src/collect/string.cpp
         include/hash.hpp
         include/collect/map.hpp
+        include/ecs/group.hpp
 )
 
 target_include_directories(${PROJECT_NAME} PUBLIC ${PROJECT_SOURCE_DIR}/src ${PROJECT_SOURCE_DIR}/include)

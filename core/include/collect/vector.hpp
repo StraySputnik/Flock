@@ -130,14 +130,14 @@ namespace Flock {
     }
 
     template <typename T, Deleter<T> deleter>
-    void resize(Vector<T, deleter> *vector, usize len) {
+    void resize(Vector<T, deleter> *vector, usize len, T fill = {}) {
         if (len > vector->len) {
             if (len > vector->cap) {
                 reserve(vector, len);
             }
 
             for (usize i = vector->len; i < len; i++) {
-                vector->ptr[i] = {};
+                vector->ptr[i] = fill;
             }
         } else if (len < vector->len) {
             if constexpr (deleter != nullptr) {
@@ -228,6 +228,48 @@ namespace Flock {
         ASSERT(vector->len > 0, "Pop on empty vector");
         resize(vector, vector->len - 1);
     }
-}
 
-#define VECTOR_FOREACH(vec, v, func) for (usize i = 0; i < len((vec)); i++) { auto v = get((vec), i); func }
+    template <typename T, Deleter<T> deleter>
+    void swap_remove(Vector<T, deleter> *vector, usize idx) {
+        ASSERT(vector->len > 0, "Swap remove on empty vector");
+        if (idx == vector->len - 1) {
+            pop(vector);
+            return;
+        }
+
+        if constexpr (deleter != nullptr) {
+            deleter(vector->ptr[idx]);
+        }
+
+        vector->ptr[idx] = *last(vector);
+        vector->len--;
+    }
+
+    template <typename T, Deleter<T> deleter>
+    void for_each(Vector<T, deleter> *vector, void (*func)(T *)) {
+        for (usize i = 0; i < len(vector); i++) {
+            func(&vector->ptr[i]);
+        }
+    }
+
+    template <typename T, Deleter<T> deleter>
+    void for_each(const Vector<T, deleter> *vector, void (*func)(const T *)) {
+        for (usize i = 0; i < len(vector); i++) {
+            func(&vector->ptr[i]);
+        }
+    }
+
+    template <typename T, Deleter<T> deleter>
+    void for_each(Vector<T, deleter> *vector, void *ctx, void (*func)(T *, void *)) {
+        for (usize i = 0; i < len(vector); i++) {
+            func(&vector->ptr[i], ctx);
+        }
+    }
+
+    template <typename T, Deleter<T> deleter>
+    void for_each(const Vector<T, deleter> *vector, void *ctx, void (*func)(const T *, void *ctx)) {
+        for (usize i = 0; i < len(vector); i++) {
+            func(&vector->ptr[i], ctx);
+        }
+    }
+}

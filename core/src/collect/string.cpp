@@ -106,6 +106,22 @@ namespace Flock {
         pop(&string->chars);
     }
 
+    void for_each(String *string, void (*func)(char *)) {
+        for_each(&string->chars, func);
+    }
+
+    void for_each(const String *string, void (*func)(const char *)) {
+        for_each(&string->chars, func);
+    }
+
+    void for_each(String *string, void *ctx, void (*func)(char *, void *)) {
+        for_each(&string->chars, ctx, func);
+    }
+
+    void for_each(const String *string, void *ctx, void (*func)(const char *, void *)) {
+        for_each(&string->chars, ctx, func);
+    }
+
     bool equal(const String *lhs, const String *rhs) {
         if (lhs->chars.len != rhs->chars.len) {
             return false;

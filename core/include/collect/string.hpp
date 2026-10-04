@@ -36,10 +36,13 @@ namespace Flock {
     void append(String *string, const char *c_str);
     void pop(String *string);
 
+    void for_each(String *string, void (*func)(char *));
+    void for_each(const String *string, void (*func)(const char *));
+    void for_each(String *string, void *ctx, void (*func)(char *, void *));
+    void for_each(const String *string, void *ctx, void (*func)(const char *, void *));
+
     bool equal(const String *lhs, const String *rhs);
     bool nequal(const String *lhs, const String *rhs);
 
     Hash hash(const String *string);
 }
-
-#define STRING_FOREACH(str, c, func) for (usize i = 0; i < len((str)); i++) { char c = *get((str), i); func }

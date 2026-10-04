@@ -197,14 +197,60 @@ namespace Flock {
             bucket->value = {};
         }
     }
-}
 
-#define MAP_FOREACH(map, k, v, func) for (usize i = 0; i < len(&(map)->buckets) + len(&(map)->collision_buckets); i++) { \
-    auto *bucket = i >= len(&(map)->buckets) ?                                                                           \
-        get(&(map)->collision_buckets, i - len(&(map)->buckets)) :                                                       \
-        get(&(map)->buckets, i);                                                                                         \
-    if (bucket->next_bucket_idx == MAP_INACTIVE_BUCKET) continue;                                                        \
-    const auto k = &bucket->key;                                                                                         \
-    auto v = &bucket->value;                                                                                             \
-    func                                                                                                                 \
+    template <typename K, typename V, Deleter<K> k_deleter, Deleter<V> v_deleter>
+    void for_each(Map<K, V, k_deleter, v_deleter> *map, void (*func)(const K *, V *)) {
+        for (usize i = 0; i < len(&map->buckets) + len(&map->collision_buckets); i++) {
+            auto bucket = i >= len(&map->buckets)
+                              ? get(&map->collision_buckets, i - len(&map->buckets))
+                              : get(&map->buckets, i);
+            if (bucket->next_bucket_idx == MAP_INACTIVE_BUCKET) {
+                continue;
+            }
+
+            func(&bucket->key, &bucket->value);
+        }
+    }
+
+    template <typename K, typename V, Deleter<K> k_deleter, Deleter<V> v_deleter>
+    void for_each(const Map<K, V, k_deleter, v_deleter> *map, void (*func)(const K *, const V *)) {
+        for (usize i = 0; i < len(&map->buckets) + len(&map->collision_buckets); i++) {
+            auto bucket = i >= len(&map->buckets)
+                              ? get(&map->collision_buckets, i - len(&map->buckets))
+                              : get(&map->buckets, i);
+            if (bucket->next_bucket_idx == MAP_INACTIVE_BUCKET) {
+                continue;
+            }
+
+            func(&bucket->key, &bucket->value);
+        }
+    }
+
+    template <typename K, typename V, Deleter<K> k_deleter, Deleter<V> v_deleter>
+    void for_each(Map<K, V, k_deleter, v_deleter> *map, void *ctx, void (*func)(const K *, V *, void *)) {
+        for (usize i = 0; i < len(&map->buckets) + len(&map->collision_buckets); i++) {
+            auto bucket = i >= len(&map->buckets)
+                              ? get(&map->collision_buckets, i - len(&map->buckets))
+                              : get(&map->buckets, i);
+            if (bucket->next_bucket_idx == MAP_INACTIVE_BUCKET) {
+                continue;
+            }
+
+            func(&bucket->key, &bucket->value, ctx);
+        }
+    }
+
+    template <typename K, typename V, Deleter<K> k_deleter, Deleter<V> v_deleter>
+    void for_each(const Map<K, V, k_deleter, v_deleter> *map, void *ctx, void (*func)(const K *, const V *, void *)) {
+        for (usize i = 0; i < len(&map->buckets) + len(&map->collision_buckets); i++) {
+            auto bucket = i >= len(&map->buckets)
+                              ? get(&map->collision_buckets, i - len(&map->buckets))
+                              : get(&map->buckets, i);
+            if (bucket->next_bucket_idx == MAP_INACTIVE_BUCKET) {
+                continue;
+            }
+
+            func(&bucket->key, &bucket->value, ctx);
+        }
+    }
 }
