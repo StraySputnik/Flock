@@ -3,132 +3,140 @@
 #include <cstring>
 
 namespace Flock {
-    String string_create() {
-        return {
-            .chars = vector_create<char>()
-        };
+    String String::create() {
+        String string{};
+        string.chars_ = Vector<char>::create();
+        return string;
     }
 
-    String string_with_cap(usize cap) {
-        return {
-            .chars = vector_with_cap<char>(cap)
-        };
+    String String::with_cap(usize cap) {
+        String string{};
+        string.chars_ = Vector<char>::with_cap(cap);
+        return string;
     }
 
-    String string_with_len(usize len) {
-        return {
-            .chars = vector_with_len<char>(len)
-        };
+    String String::with_len(usize len) {
+        String string{};
+        string.chars_ = Vector<char>::with_len(len, ' ');
+        return string;
     }
 
-    String string_from(const char *c_str) {
+    String String::from(const char *c_str) {
         const usize len = strlen(c_str);
-        String      string{
-            .chars = vector_with_cap<char>(len)
-        };
+
+        String string{};
+        string.chars_ = Vector<char>::with_cap(len);
 
         for (usize i = 0; i < len; i++) {
-            push(&string.chars, c_str[i]);
+            string.chars_.push(c_str[i]);
         }
 
         return string;
     }
 
-    void string_delete(String *string) {
-        vector_delete(&string->chars);
+    void String::free() {
+        chars_.free();
     }
 
-    void reserve(String *string, usize cap) {
-        reserve(&string->chars, cap);
+    void String::reserve(usize cap) {
+        return chars_.reserve(cap);
     }
 
-    void shrink_to(String *string, usize cap) {
-        shrink_to(&string->chars, cap);
+    void String::shrink_to(usize cap) {
+        return chars_.shrink_to(cap);
     }
 
-    void shrink_to_fit(String *string) {
-        shrink_to_fit(&string->chars);
+    void String::shrink_to_fit() {
+        return chars_.shrink_to_fit();
     }
 
-    void resize(String *string, usize len) {
-        resize(&string->chars, len);
+    void String::resize(usize len, char fill) {
+        return chars_.resize(len, fill);
     }
 
-    usize len(const String *string) {
-        return string->chars.len;
+    void String::fill(char fill) {
+        return chars_.fill(fill);
     }
 
-    usize cap(const String *string) {
-        return string->chars.cap;
+    usize String::len() const {
+        return chars_.len();
     }
 
-    Allocator *allocator(const String *string) {
-        return string->chars.allocator;
+    usize String::cap() const {
+        return chars_.cap();
     }
 
-    char *get(String *string, usize idx) {
-        return get(&string->chars, idx);
+    Allocator *String::allocator() const {
+        return chars_.allocator();
     }
 
-    char *first(String *string) {
-        return first(&string->chars);
+    bool String::is_empty() const {
+        return chars_.is_empty();
     }
 
-    char *last(String *string) {
-        return last(&string->chars);
+    char *String::get(usize idx) {
+        return chars_.get(idx);
     }
 
-    const char *get(const String *string, usize idx) {
-        return get(&string->chars, idx);
+    char &String::operator[](usize idx) {
+        return chars_[idx];
     }
 
-    const char *first(const String *string) {
-        return first(&string->chars);
+    char *String::first() {
+        return chars_.first();
     }
 
-    const char *last(const String *string) {
-        return last(&string->chars);
+    char *String::last() {
+        return chars_.last();
     }
 
-    void push(String *string, char element) {
-        push(&string->chars, element);
+    const char *String::get(usize idx) const {
+        return chars_.get(idx);
     }
 
-    void append(String *string, const char *c_str) {
+    const char &String::operator[](usize idx) const {
+        return chars_[idx];
+    }
+
+    const char *String::first() const {
+        return chars_.first();
+    }
+
+    const char *String::last() const {
+        return chars_.last();
+    }
+
+    void String::push(char element) {
+        return chars_.push(element);
+    }
+
+    void String::append(const String &c_str) {
+        return chars_.append(c_str.chars_);
+    }
+
+    void String::append(const char *c_str) {
         const usize len = strlen(c_str);
-        reserve(string, string->chars.len + len);
+        reserve(chars_.len() + len);
         for (usize i = 0; i < len; i++) {
-            push(&string->chars, c_str[i]);
+            chars_.push(c_str[i]);
         }
     }
 
-    void pop(String *string) {
-        pop(&string->chars);
+    void String::pop() {
+        return chars_.pop();
     }
 
-    void for_each(String *string, void (*func)(char *)) {
-        for_each(&string->chars, func);
+    void String::swap_remove(usize idx) {
+        return chars_.swap_remove(idx);
     }
 
-    void for_each(const String *string, void (*func)(const char *)) {
-        for_each(&string->chars, func);
-    }
-
-    void for_each(String *string, void *ctx, void (*func)(char *, void *)) {
-        for_each(&string->chars, ctx, func);
-    }
-
-    void for_each(const String *string, void *ctx, void (*func)(const char *, void *)) {
-        for_each(&string->chars, ctx, func);
-    }
-
-    bool equal(const String *lhs, const String *rhs) {
-        if (lhs->chars.len != rhs->chars.len) {
+    bool String::operator==(const String &other) const {
+        if (chars_.len() != other.chars_.len()) {
             return false;
         }
 
-        for (usize i = 0; i < lhs->chars.len; i++) {
-            if (*get(&lhs->chars, i) != *get(&rhs->chars, i)) {
+        for (usize i = 0; i < chars_.len(); i++) {
+            if (chars_[i] != other[i]) {
                 return false;
             }
         }
@@ -136,11 +144,27 @@ namespace Flock {
         return true;
     }
 
-    bool nequal(const String *lhs, const String *rhs) {
-        return !equal(lhs, rhs);
+    bool String::operator!=(const String &other) const {
+        return !(*this == other);
     }
 
-    Hash hash(const String *string) {
-        return hash(string->chars.ptr, string->chars.len);
+    char *String::begin() {
+        return chars_.begin();
+    }
+
+    char *String::end() {
+        return chars_.end();
+    }
+
+    const char *String::begin() const {
+        return chars_.begin();
+    }
+
+    const char *String::end() const {
+        return chars_.end();
+    }
+
+    Hash hash(const String &string) {
+        return hash(string.first(), string.len());
     }
 }

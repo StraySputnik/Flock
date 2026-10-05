@@ -7,269 +7,331 @@ namespace Flock {
     static constexpr usize VECTOR_INIT_LENGTH = 8;
     static constexpr f32   VECTOR_GROW_FACTOR = 1.4f;
 
-    template <typename T, Deleter<T> deleter = nullptr>
-    struct Vector {
-        T *        ptr       = nullptr;
-        Allocator *allocator = nullptr;
-        usize      len       = 0;
-        usize      cap       = 0;
+    template <typename T>
+    class Vector {
+        T *        ptr_       = nullptr;
+        Allocator *allocator_ = nullptr;
+        usize      len_       = 0;
+        usize      cap_       = 0;
+
+    public:
+        static Vector create() {
+            Vector vector     = {};
+            vector.allocator_ = Allocator::get_global();
+            vector.len_       = 0;
+            vector.cap_       = VECTOR_INIT_LENGTH;
+
+            vector.ptr_ = static_cast<T *>(alloc(vector.allocator_, VECTOR_INIT_LENGTH * sizeof(T), alignof(T)));
+            ASSERT(vector.ptr_, "Allocation failed");
+            return vector;
+        }
+
+        static Vector with_cap(usize cap) {
+            Vector vector     = {};
+            vector.allocator_ = Allocator::get_global();
+            vector.len_       = 0;
+            vector.cap_       = cap;
+
+            vector.ptr_ = static_cast<T *>(alloc(vector.allocator_, cap * sizeof(T), alignof(T)));
+            ASSERT(vector.ptr_, "Allocation failed");
+            return vector;
+        }
+
+        static Vector with_len(usize len, T fill = {}) {
+            Vector vector     = {};
+            vector.allocator_ = Allocator::get_global();
+            vector.len_       = len;
+            vector.cap_       = len;
+
+            vector.ptr_ = static_cast<T *>(alloc(vector.allocator_, len * sizeof(T), alignof(T)));
+            ASSERT(vector.ptr_, "Allocation failed");
+
+            for (usize i = 0; i < len; i++) {
+                new(vector.ptr_ + i) T(fill);
+            }
+
+            return vector;
+        }
+
+        Vector() = default;
+
+        Vector(const Vector &other) {
+            allocator_ = Allocator::get_global();
+            len_       = other.len_;
+            cap_       = other.cap_;
+
+            ptr_ = static_cast<T *>(alloc(allocator_, cap_ * sizeof(T), alignof(T)));
+            ASSERT(ptr_, "Allocation failed");
+
+            for (usize i = 0; i < len_; i++) {
+                ptr_[i] = other[i];
+            }
+        }
+
+        Vector(Vector &&other) noexcept {
+            allocator_ = other.allocator_;
+            len_       = other.len_;
+            cap_       = other.cap_;
+            ptr_       = other.ptr_;
+
+            other.allocator_ = nullptr;
+            other.len_       = 0;
+            other.cap_       = 0;
+            other.ptr_       = nullptr;
+        }
+
+        Vector &operator=(const Vector &other) {
+            if (this == &other) {
+                return *this;
+            }
+
+            free();
+
+            allocator_ = Allocator::get_global();
+            len_       = other.len_;
+            cap_       = other.cap_;
+
+            ptr_ = static_cast<T *>(alloc(allocator_, cap_ * sizeof(T), alignof(T)));
+            ASSERT(ptr_, "Allocation failed");
+
+            for (usize i = 0; i < len_; i++) {
+                ptr_[i] = other[i];
+            }
+
+            return *this;
+        }
+
+        Vector &operator=(Vector &&other) noexcept {
+            if (this == &other) {
+                return *this;
+            }
+
+            free();
+
+            allocator_ = other.allocator_;
+            len_       = other.len_;
+            cap_       = other.cap_;
+            ptr_       = other.ptr_;
+
+            other.allocator_ = nullptr;
+            other.len_       = 0;
+            other.cap_       = 0;
+            other.ptr_       = nullptr;
+
+            return *this;
+        }
+
+        ~Vector() {
+            free();
+        }
+
+        void free() {
+            if (!ptr_) {
+                return;
+            }
+
+            for (usize i = 0; i < len_; i++) {
+                ptr_[i].~T();
+            }
+
+            Flock::free(allocator_, ptr_, cap_ * sizeof(T));
+        }
+
+        void grow() {
+            usize new_cap = cap_ < VECTOR_INIT_LENGTH ? VECTOR_INIT_LENGTH : cap_;
+            new_cap       *= VECTOR_GROW_FACTOR;
+
+            ptr_ = static_cast<T *>(realloc(allocator_, ptr_, cap_ * sizeof(T), new_cap * sizeof(T), alignof(T)));
+            cap_ = new_cap;
+
+            ASSERT(ptr_, "Allocation failed");
+        }
+
+        void reserve(usize cap) {
+            if (cap <= cap_) {
+                return;
+            }
+
+            usize new_cap = cap_ < VECTOR_INIT_LENGTH ? VECTOR_INIT_LENGTH : cap_;
+            while (new_cap < cap) {
+                new_cap *= VECTOR_GROW_FACTOR;
+            }
+
+            ptr_ = static_cast<T *>(realloc(allocator_, ptr_, cap_ * sizeof(T), new_cap * sizeof(T), alignof(T)));
+            cap_ = new_cap;
+
+            ASSERT(ptr_, "Allocation failed");
+        }
+
+        void shrink_to(usize cap) {
+            if (cap >= cap_) {
+                return;
+            }
+
+            if (cap < len_) {
+                for (usize i = cap; i < len_; i++) {
+                    ptr_[i].~T();
+                }
+            }
+
+            ptr_ = static_cast<T *>(realloc(allocator_, ptr_, cap_ * sizeof(T), cap * sizeof(T), alignof(T)));
+            cap_ = cap;
+        }
+
+        void shrink_to_fit() {
+            shrink_to(len_);
+        }
+
+        void resize(usize len, T fill = {}) {
+            if (len > len_) {
+                if (len > cap_) {
+                    reserve(len);
+                }
+
+                for (usize i = len_; i < len; i++) {
+                    new(ptr_ + i) T(fill);
+                }
+            } else if (len < len_) {
+                for (usize i = len; i < len_; i++) {
+                    ptr_[i].~T();
+                }
+            }
+
+            len_ = len;
+        }
+
+        void fill(T value) {
+            for (usize i = 0; i < len_; i++) {
+                ptr_[i] = value;
+            }
+        }
+
+        void empty_fill() {
+            for (usize i = 0; i < len_; i++) {
+                ptr_[i] = {};
+            }
+        }
+
+        usize len() const {
+            return len_;
+        }
+
+        usize cap() const {
+            return cap_;
+        }
+
+        Allocator *allocator() const {
+            return allocator_;
+        }
+
+        bool is_empty() const {
+            return len_ == 0;
+        }
+
+        T *get(usize idx) {
+            if (idx >= len_) {
+                return nullptr;
+            }
+
+            return ptr_ + idx;
+        }
+
+        T &operator[](usize idx) {
+            ASSERT(idx < len_, "Out of bounds access");
+            return ptr_[idx];
+        }
+
+        T *first() {
+            return get(0);
+        }
+
+        T *last() {
+            return get(len_ - 1);
+        }
+
+        const T *get(usize idx) const {
+            if (idx >= len_) {
+                return nullptr;
+            }
+
+            return ptr_ + idx;
+        }
+
+        const T &operator[](usize idx) const {
+            ASSERT(idx < len_, "Out of bounds access");
+            return ptr_[idx];
+        }
+
+        const T *first() const {
+            return get(0);
+        }
+
+        const T *last() const {
+            return get(len_ - 1);
+        }
+
+        void push(T element = {}) {
+            return resize(len_ + 1, element);
+        }
+
+        void append(const Vector vector) {
+            const usize len = vector.len_;
+            reserve(len_ + len);
+            for (usize i = 0; i < len; i++) {
+                push(vector[i]);
+            }
+        }
+
+        void pop() {
+            ASSERT(len_ > 0, "Pop on empty vector");
+            resize(len_ - 1);
+        }
+
+        void swap_remove(usize idx) {
+            ASSERT(len_ > 0, "Swap remove on empty vector");
+            ASSERT(idx < len_, "Out of bounds access");
+
+            if (idx == len_ - 1) {
+                pop();
+                return;
+            }
+
+            ptr_[idx] = *last();
+            len_--;
+        }
+
+        T *begin() {
+            return first();
+        }
+
+        T *end() {
+            return last();
+        }
+
+        bool operator==(const Vector &other) {
+            if (len_ != other.len_) {
+                return false;
+            }
+
+            for (usize i = 0; i < len_; i++) {
+                if (ptr_[i] != other[i]) {
+                    return false;
+                }
+            }
+
+            return true;
+        }
+
+        bool operator!=(const Vector &other) {
+            return !(*this == other);
+        }
+
+        const T *begin() const {
+            return first();
+        }
+
+        const T *end() const {
+            return last();
+        }
     };
-
-    template <typename T, Deleter<T> deleter = nullptr>
-    Vector<T, deleter> vector_create() {
-        Vector<T, deleter> vector = {
-            .ptr       = (T *)alloc(get_allocator(), VECTOR_INIT_LENGTH * sizeof(T), alignof(T)),
-            .allocator = get_allocator(),
-            .len       = 0,
-            .cap       = VECTOR_INIT_LENGTH,
-        };
-
-        ASSERT(vector.ptr, "Allocation failed");
-        return vector;
-    }
-
-    template <typename T, Deleter<T> deleter = nullptr>
-    Vector<T, deleter> vector_with_cap(usize cap) {
-        Vector<T, deleter> vector = {
-            .ptr       = (T *)alloc(get_allocator(), cap * sizeof(T), alignof(T)),
-            .allocator = get_allocator(),
-            .len       = 0,
-            .cap       = cap,
-        };
-
-        ASSERT(vector.ptr, "Allocation failed");
-        return vector;
-    }
-
-    template <typename T, Deleter<T> deleter = nullptr>
-    Vector<T, deleter> vector_with_len(usize len) {
-        Vector<T, deleter> vector = {
-            .ptr       = (T *)alloc(get_allocator(), len * sizeof(T), alignof(T)),
-            .allocator = get_allocator(),
-            .len       = 0,
-            .cap       = len,
-        };
-
-        ASSERT(vector.ptr, "Allocation failed");
-
-        for (usize i = 0; i < len; i++) {
-            vector.ptr[i] = {};
-        }
-
-        vector.len = len;
-        return vector;
-    }
-
-    template <typename T, Deleter<T> deleter>
-    void vector_delete(Vector<T, deleter> *vector) {
-        if constexpr (deleter != nullptr) {
-            for (usize i = 0; i < vector->len; i++) {
-                deleter(&vector->ptr[i]);
-            }
-        }
-
-        free(vector->allocator, vector->ptr, vector->cap * sizeof(T));
-        vector->ptr       = nullptr;
-        vector->allocator = nullptr;
-        vector->cap       = 0;
-        vector->len       = 0;
-    }
-
-    template <typename T, Deleter<T> deleter>
-    void grow(Vector<T, deleter> *vector) {
-        usize new_cap = vector->cap < VECTOR_INIT_LENGTH ? VECTOR_INIT_LENGTH : vector->cap;
-        new_cap       *= VECTOR_GROW_FACTOR;
-
-        vector->ptr = (T *)realloc(vector->allocator, vector->ptr, vector->cap * sizeof(T), new_cap * sizeof(T),
-                                   alignof(T));
-        vector->cap = new_cap;
-
-        ASSERT(vector->ptr, "Allocation failed");
-    }
-
-    template <typename T, Deleter<T> deleter>
-    void reserve(Vector<T, deleter> *vector, usize cap) {
-        if (cap <= vector->cap) {
-            return;
-        }
-
-        usize new_cap = vector->cap < VECTOR_INIT_LENGTH ? VECTOR_INIT_LENGTH : vector->cap;
-        while (new_cap < cap) {
-            new_cap *= VECTOR_GROW_FACTOR;
-        }
-
-        vector->ptr = (T *)realloc(vector->allocator, vector->ptr, vector->cap * sizeof(T), new_cap * sizeof(T),
-                                   alignof(T));
-        vector->cap = new_cap;
-
-        ASSERT(vector->ptr, "Allocation failed");
-    }
-
-    template <typename T, Deleter<T> deleter>
-    void shrink_to(Vector<T, deleter> *vector, usize cap) {
-        if (cap >= vector->cap) {
-            return;
-        }
-
-        if constexpr (deleter != nullptr) {
-            if (cap < vector->len) {
-                for (usize i = cap; i < vector->len; i++) {
-                    deleter(&vector->ptr[i]);
-                }
-            }
-        }
-
-        vector->ptr = (T *)realloc(vector->allocator, vector->ptr, vector->cap * sizeof(T), cap * sizeof(T),
-                                   alignof(T));
-        vector->cap = cap;
-    }
-
-    template <typename T, Deleter<T> deleter>
-    void shrink_to_fit(Vector<T, deleter> *vector) {
-        shrink_to(vector, vector->len);
-    }
-
-    template <typename T, Deleter<T> deleter>
-    void resize(Vector<T, deleter> *vector, usize len, T fill = {}) {
-        if (len > vector->len) {
-            if (len > vector->cap) {
-                reserve(vector, len);
-            }
-
-            for (usize i = vector->len; i < len; i++) {
-                vector->ptr[i] = fill;
-            }
-        } else if (len < vector->len) {
-            if constexpr (deleter != nullptr) {
-                for (usize i = len; i < vector->len; i++) {
-                    deleter(&vector->ptr[i]);
-                }
-            }
-        }
-
-        vector->len = len;
-    }
-
-    template <typename T, Deleter<T> deleter>
-    void fill(Vector<T, deleter> *vector, T value) {
-        for (usize i = 0; i < vector->len; i++) {
-            vector->ptr[i] = value;
-        }
-    }
-
-    template <typename T, Deleter<T> deleter>
-    void zero_fill(Vector<T, deleter> *vector) {
-        for (usize i = 0; i < vector->len; i++) {
-            vector->ptr[i] = {};
-        }
-    }
-
-    template <typename T, Deleter<T> deleter>
-    usize len(const Vector<T, deleter> *vector) {
-        return vector->len;
-    }
-
-    template <typename T, Deleter<T> deleter>
-    usize cap(const Vector<T, deleter> *vector) {
-        return vector->cap;
-    }
-
-    template <typename T, Deleter<T> deleter>
-    Allocator *allocator(const Vector<T, deleter> *vector) {
-        return vector->allocator;
-    }
-
-    template <typename T, Deleter<T> deleter>
-    T *get(Vector<T, deleter> *vector, usize idx) {
-        if (idx >= vector->len) {
-            return nullptr;
-        }
-
-        return &vector->ptr[idx];
-    }
-
-    template <typename T, Deleter<T> deleter>
-    T *first(Vector<T, deleter> *vector) {
-        return get(vector, 0);
-    }
-
-    template <typename T, Deleter<T> deleter>
-    T *last(Vector<T, deleter> *vector) {
-        return get(vector, vector->len - 1);
-    }
-
-    template <typename T, Deleter<T> deleter>
-    const T *get(const Vector<T, deleter> *vector, usize idx) {
-        if (idx >= vector->len) {
-            return nullptr;
-        }
-
-        return &vector->ptr[idx];
-    }
-
-    template <typename T, Deleter<T> deleter>
-    const T *first(const Vector<T, deleter> *vector) {
-        return get(vector, 0);
-    }
-
-    template <typename T, Deleter<T> deleter>
-    const T *last(const Vector<T, deleter> *vector) {
-        return get(vector, vector->len - 1);
-    }
-
-    template <typename T, Deleter<T> deleter>
-    void push(Vector<T, deleter> *vector, T element = {}) {
-        resize(vector, vector->len + 1);
-        *last(vector) = element;
-    }
-
-    template <typename T, Deleter<T> deleter>
-    void pop(Vector<T, deleter> *vector) {
-        ASSERT(vector->len > 0, "Pop on empty vector");
-        resize(vector, vector->len - 1);
-    }
-
-    template <typename T, Deleter<T> deleter>
-    void swap_remove(Vector<T, deleter> *vector, usize idx) {
-        ASSERT(vector->len > 0, "Swap remove on empty vector");
-        if (idx == vector->len - 1) {
-            pop(vector);
-            return;
-        }
-
-        if constexpr (deleter != nullptr) {
-            deleter(vector->ptr[idx]);
-        }
-
-        vector->ptr[idx] = *last(vector);
-        vector->len--;
-    }
-
-    template <typename T, Deleter<T> deleter>
-    void for_each(Vector<T, deleter> *vector, void (*func)(T *)) {
-        for (usize i = 0; i < len(vector); i++) {
-            func(&vector->ptr[i]);
-        }
-    }
-
-    template <typename T, Deleter<T> deleter>
-    void for_each(const Vector<T, deleter> *vector, void (*func)(const T *)) {
-        for (usize i = 0; i < len(vector); i++) {
-            func(&vector->ptr[i]);
-        }
-    }
-
-    template <typename T, Deleter<T> deleter>
-    void for_each(Vector<T, deleter> *vector, void *ctx, void (*func)(T *, void *)) {
-        for (usize i = 0; i < len(vector); i++) {
-            func(&vector->ptr[i], ctx);
-        }
-    }
-
-    template <typename T, Deleter<T> deleter>
-    void for_each(const Vector<T, deleter> *vector, void *ctx, void (*func)(const T *, void *ctx)) {
-        for (usize i = 0; i < len(vector); i++) {
-            func(&vector->ptr[i], ctx);
-        }
-    }
 }

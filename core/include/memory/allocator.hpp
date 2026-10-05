@@ -8,32 +8,47 @@ namespace Flock {
     void *sys_realloc(void *allocation, usize size);
     void  sys_free(void *allocation);
 
-    enum class AllocatorType : u8 {
-        BumpAllocator,
+    class Allocator {
+    public:
+        static void       push_global(Allocator *allocator);
+        static void       pop_global();
+        static Allocator *get_global();
+
+        virtual ~Allocator() = default;
+
+        virtual void *alloc(usize size, usize align) = 0;
+        virtual void *realloc(void *src, usize src_size, usize dest_size, usize align) = 0;
+        virtual void  free(void *ptr, usize size) = 0;
+        virtual void  clear() = 0;
     };
-
-    struct BumpAllocatorData {
-        usize offset = 0;
-    };
-
-    struct Allocator {
-        AllocatorType type = {};
-        byte *        ptr  = nullptr;
-        usize         size = 0;
-
-        union {
-            BumpAllocatorData bump;
-        };
-    };
-
-    Maybe<Allocator> allocator_create(AllocatorType type, usize size);
-    void             allocator_delete(Allocator *allocator);
 
     void *alloc(Allocator *allocator, usize size, usize align = alignof(usize));
     void *realloc(Allocator *allocator, void *src, usize src_size, usize dest_size, usize align = alignof(usize));
-    void  free(Allocator *allocator, void *allocation, usize size);
+    void  free(Allocator *allocator, void *ptr, usize size);
 
-    void       push_allocator(Allocator *allocator);
-    void       pop_allocator();
-    Allocator *get_allocator();
+    class BumpAllocator : public Allocator {
+        byte *ptr_    = nullptr;
+        usize size_   = 0;
+        usize offset_ = 0;
+
+    public:
+        static Maybe<BumpAllocator> create(usize size);
+
+        BumpAllocator() = default;
+
+        BumpAllocator(const BumpAllocator &other) = delete;
+        BumpAllocator(BumpAllocator &&other) noexcept;
+
+        BumpAllocator &operator=(const BumpAllocator &other) = delete;
+        BumpAllocator &operator=(BumpAllocator &&other) noexcept;
+
+        ~BumpAllocator() override;
+
+        void *alloc(usize size, usize align = alignof(usize)) override;
+        void *realloc(void *src, usize src_size, usize dest_size, usize align = alignof(usize)) override;
+        void  free(void *ptr, usize size) override;
+        void  clear() override;
+
+        void set_global();
+    };
 }

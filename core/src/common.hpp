@@ -1,15 +1,16 @@
 #pragma once
 
+#include <algorithm>
 #include <cstdlib>
 #include <cstdint>
 #include <cstddef>
 #include <cstdio>
 
 namespace Flock {
-    using u8  = int8_t;
-    using u16 = int16_t;
-    using u32 = int32_t;
-    using u64 = int64_t;
+    using u8  = uint8_t;
+    using u16 = uint16_t;
+    using u32 = uint32_t;
+    using u64 = uint64_t;
 
     using i8  = int8_t;
     using i16 = int16_t;
@@ -23,33 +24,36 @@ namespace Flock {
 
     using byte = unsigned char;
 
-    template <typename T>
-    using Deleter = void (*)(T *);
-
-    static constexpr usize INVALID_64 = UINT64_MAX;
+    static constexpr u64   INVALID_64 = UINT64_MAX;
     static constexpr u32   INVALID_32 = UINT32_MAX;
-    static constexpr u32   INVALID    = INVALID_32;
+    static constexpr usize INVALID    = (int)sizeof(void *) == 8 ? INVALID_64 : INVALID_32;
 
-    template <typename T>
-    bool equal(const T *lhs, const T *rhs) {
-        return *lhs == *rhs;
+    using TypeID = usize;
+
+    namespace Impl {
+        inline static TypeID current_type_id = 0;
     }
 
     template <typename T>
-    bool nequal(const T *lhs, const T *rhs) {
-        return *lhs != *rhs;
-    }
-
-    template <typename T>
-    T copy(const T *value) {
-        return *value;
-    }
-
-    template <typename T>
-    T move(T *value) {
-        return *value;
+    TypeID type_id() {
+        static TypeID id = Impl::current_type_id++;
+        return id;
     }
 }
+
+#ifdef _WIN32
+#   if FLK_SHARED_BUILD
+#       define FLK_API __declspec(dllexport)
+#   else
+#       define FLK_API __declspec(dllimport)
+#   endif
+#else
+#   if FLK_SHARED_BUILD
+#       define FLK_API __attribute__((visibility("default")))
+#   else
+#       define FLK_API
+#   endif
+#endif
 
 #define PANIC() abort()
 

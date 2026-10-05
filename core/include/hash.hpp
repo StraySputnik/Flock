@@ -3,7 +3,7 @@
 #include "common.hpp"
 
 namespace Flock {
-    using Hash = i32;
+    using Hash = u32;
 
     inline Hash hash(void *data, usize len) {
         const auto ptr  = (byte *)data;
@@ -27,7 +27,7 @@ namespace Flock {
     }
 
     template <typename T>
-    Hash hash(const T *value) {
-        return hash(value, sizeof(T));
+    Hash hash(const T &value) {
+        return hash(&value, sizeof(T));
     }
 }

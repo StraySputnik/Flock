@@ -5,44 +5,52 @@
 #include "vector.hpp"
 
 namespace Flock {
-    struct String {
-        Vector<char> chars = {};
+    class FLK_API String {
+        Vector<char> chars_ = {};
+
+    public:
+        static String create();
+        static String with_cap(usize cap);
+        static String with_len(usize len);
+        static String from(const char *c_str);
+
+        void free();
+
+        void reserve(usize cap);
+        void shrink_to(usize cap);
+        void shrink_to_fit();
+        void resize(usize len, char fill = {});
+        void fill(char fill);
+
+        usize      len() const;
+        usize      cap() const;
+        Allocator *allocator() const;
+        bool       is_empty() const;
+
+        char *get(usize idx);
+        char &operator[](usize idx);
+        char *first();
+        char *last();
+
+        const char *get(usize idx) const;
+        const char &operator[](usize idx) const;
+        const char *first() const;
+        const char *last() const;
+
+        void push(char element);
+        void append(const String &c_str);
+        void append(const char *c_str);
+        void pop();
+        void swap_remove(usize idx);
+
+        bool operator==(const String &other) const;
+        bool operator!=(const String &other) const;
+
+        char *      begin();
+        char *      end();
+        const char *begin() const;
+        const char *end() const;
     };
 
-    String string_create();
-    String string_with_cap(usize cap);
-    String string_with_len(usize len);
-    String string_from(const char *c_str);
-    void   string_delete(String *string);
-
-    void reserve(String *string, usize cap);
-    void shrink_to(String *string, usize cap);
-    void shrink_to_fit(String *string);
-    void resize(String *string, usize len);
-
-    usize      len(const String *string);
-    usize      cap(const String *string);
-    Allocator *allocator(const String *string);
-
-    char *get(String *string, usize idx);
-    char *first(String *string);
-    char *last(String *string);
-
-    const char *get(const String *string, usize idx);
-    const char *first(const String *string);
-    const char *last(const String *string);
-
-    void push(String *string, char element);
-    void append(String *string, const char *c_str);
-    void pop(String *string);
-
-    void for_each(String *string, void (*func)(char *));
-    void for_each(const String *string, void (*func)(const char *));
-    void for_each(String *string, void *ctx, void (*func)(char *, void *));
-    void for_each(const String *string, void *ctx, void (*func)(const char *, void *));
-
-    bool equal(const String *lhs, const String *rhs);
-    bool nequal(const String *lhs, const String *rhs);
-
-    Hash hash(const String *string);
+    FLK_API Hash hash(const String &string);
 }
