@@ -182,7 +182,25 @@ namespace Flock {
             shrink_to(len_);
         }
 
-        void resize(usize len, T fill = {}) {
+        void resize(usize len) {
+            if (len > len_) {
+                if (len > cap_) {
+                    reserve(len);
+                }
+
+                for (usize i = len_; i < len; i++) {
+                    new(ptr_ + i) T();
+                }
+            } else if (len < len_) {
+                for (usize i = len; i < len_; i++) {
+                    ptr_[i].~T();
+                }
+            }
+
+            len_ = len;
+        }
+
+        void resize(usize len, const T &fill) {
             if (len > len_) {
                 if (len > cap_) {
                     reserve(len);
@@ -190,6 +208,24 @@ namespace Flock {
 
                 for (usize i = len_; i < len; i++) {
                     new(ptr_ + i) T(fill);
+                }
+            } else if (len < len_) {
+                for (usize i = len; i < len_; i++) {
+                    ptr_[i].~T();
+                }
+            }
+
+            len_ = len;
+        }
+
+        void resize(usize len, T &&fill) {
+            if (len > len_) {
+                if (len > cap_) {
+                    reserve(len);
+                }
+
+                for (usize i = len_; i < len; i++) {
+                    new(ptr_ + i) T(std::move(fill));
                 }
             } else if (len < len_) {
                 for (usize i = len; i < len_; i++) {
@@ -270,8 +306,12 @@ namespace Flock {
             return get(len_ - 1);
         }
 
-        void push(T element = {}) {
+        void push(const T &element = {}) {
             return resize(len_ + 1, element);
+        }
+
+        void push(T &&element) {
+            return resize(len_ + 1, std::move(element));
         }
 
         void append(const Vector vector) {
@@ -282,22 +322,26 @@ namespace Flock {
             }
         }
 
-        void pop() {
+        T pop() {
             ASSERT(len_ > 0, "Pop on empty vector");
+            T val = std::move(*last());
             resize(len_ - 1);
+            return val;
         }
 
-        void swap_remove(usize idx) {
+        T swap_remove(usize idx) {
             ASSERT(len_ > 0, "Swap remove on empty vector");
             ASSERT(idx < len_, "Out of bounds access");
 
             if (idx == len_ - 1) {
-                pop();
-                return;
+                return pop();
             }
 
-            ptr_[idx] = *last();
+            T val     = std::move(ptr_[idx]);
+            ptr_[idx] = std::move(*last());
             len_--;
+
+            return val;
         }
 
         T *begin() {
@@ -308,7 +352,7 @@ namespace Flock {
             return last();
         }
 
-        bool operator==(const Vector &other) {
+        bool operator==(const Vector &other) const {
             if (len_ != other.len_) {
                 return false;
             }
@@ -322,7 +366,7 @@ namespace Flock {
             return true;
         }
 
-        bool operator!=(const Vector &other) {
+        bool operator!=(const Vector &other) const {
             return !(*this == other);
         }
 

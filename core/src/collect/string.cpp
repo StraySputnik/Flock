@@ -3,6 +3,77 @@
 #include <cstring>
 
 namespace Flock {
+    StringSlice StringSlice::create(const char *ptr, usize len) {
+        StringSlice slice{};
+        slice.ptr_ = ptr;
+        slice.len_ = len;
+        return slice;
+    }
+
+    usize StringSlice::len() const {
+        return len_;
+    }
+
+    bool StringSlice::is_empty() const {
+        return len_ == 0;
+    }
+
+    const char *StringSlice::get(usize idx) const {
+        if (idx >= len_) {
+            return nullptr;
+        }
+
+        return ptr_ + idx;
+    }
+
+    const char &StringSlice::operator[](usize idx) const {
+        ASSERT(idx >= len_, "Out of bounds access");
+        return ptr_[idx];
+    }
+
+    const char *StringSlice::first() const {
+        return get(0);
+    }
+
+    const char *StringSlice::last() const {
+        return get(len_ - 1);
+    }
+
+    String StringSlice::to_string() {
+        auto str = String::with_cap(len_);
+        for (const auto c : *this) {
+            str.push(c);
+        }
+
+        return str;
+    }
+
+    bool StringSlice::operator==(const StringSlice &other) const {
+        if (len_ != other.len_) {
+            return false;
+        }
+
+        for (usize i = 0; i < len_; i++) {
+            if (ptr_[i] != other[i]) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    bool StringSlice::operator!=(const StringSlice &other) const {
+        return !(*this == other);
+    }
+
+    const char *StringSlice::begin() const {
+        return first();
+    }
+
+    const char *StringSlice::end() const {
+        return last();
+    }
+
     String String::create() {
         String string{};
         string.chars_ = Vector<char>::create();
@@ -122,26 +193,20 @@ namespace Flock {
         }
     }
 
-    void String::pop() {
+    char String::pop() {
         return chars_.pop();
     }
 
-    void String::swap_remove(usize idx) {
+    char String::swap_remove(usize idx) {
         return chars_.swap_remove(idx);
     }
 
+    StringSlice String::as_slice() {
+        return StringSlice::create(chars_.first(), chars_.len());
+    }
+
     bool String::operator==(const String &other) const {
-        if (chars_.len() != other.chars_.len()) {
-            return false;
-        }
-
-        for (usize i = 0; i < chars_.len(); i++) {
-            if (chars_[i] != other[i]) {
-                return false;
-            }
-        }
-
-        return true;
+        return chars_ == other.chars_;
     }
 
     bool String::operator!=(const String &other) const {

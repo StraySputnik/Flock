@@ -5,7 +5,7 @@
 namespace Flock {
     using Hash = u32;
 
-    inline Hash hash(void *data, usize len) {
+    inline Hash hash(const void *data, usize len) {
         const auto ptr  = (byte *)data;
         Hash       hash = 0;
 

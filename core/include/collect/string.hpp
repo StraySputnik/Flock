@@ -5,6 +5,32 @@
 #include "vector.hpp"
 
 namespace Flock {
+    class String;
+
+    class FLK_API StringSlice {
+        const char *ptr_ = nullptr;
+        usize       len_ = 0;
+
+    public:
+        static StringSlice create(const char *ptr, usize len);
+
+        usize len() const;
+        bool  is_empty() const;
+
+        const char *get(usize idx) const;
+        const char &operator[](usize idx) const;
+        const char *first() const;
+        const char *last() const;
+
+        String to_string();
+
+        bool operator==(const StringSlice &other) const;
+        bool operator!=(const StringSlice &other) const;
+
+        const char *begin() const;
+        const char *end() const;
+    };
+
     class FLK_API String {
         Vector<char> chars_ = {};
 
@@ -40,8 +66,10 @@ namespace Flock {
         void push(char element);
         void append(const String &c_str);
         void append(const char *c_str);
-        void pop();
-        void swap_remove(usize idx);
+        char pop();
+        char swap_remove(usize idx);
+
+        StringSlice as_slice();
 
         bool operator==(const String &other) const;
         bool operator!=(const String &other) const;

@@ -45,18 +45,22 @@ namespace Flock {
         }
 
         T *operator ->() {
+            ASSERT(has_value(), "Deref on empty Maybe");
             return &value_;
         }
 
         const T *operator ->() const {
+            ASSERT(has_value(), "Deref on empty Maybe");
             return &value_;
         }
 
         T &operator*() {
+            ASSERT(has_value(), "Deref on empty Maybe");
             return value_;
         }
 
         const T &operator*() const {
+            ASSERT(has_value(), "Deref on empty Maybe");
             return value_;
         }
     };

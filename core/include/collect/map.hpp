@@ -71,7 +71,7 @@ namespace Flock {
             rehash();
         }
 
-        void insert(K key, V value) {
+        void insert(const K &key, const V &value) {
             ASSERT(!get(key), "Insert on an existing element");
 
             const f32 load_factor = static_cast<f32>(elem_count_) / static_cast<f32>(buckets_.len());
@@ -84,7 +84,7 @@ namespace Flock {
             elem_count_++;
         }
 
-        V *get(K key) {
+        V *get(const K &key) {
             Hash  h   = hash(key);
             usize idx = h % buckets_.len();
 
@@ -102,7 +102,42 @@ namespace Flock {
             return nullptr;
         }
 
-        void remove(K key) {
+        const V *get(const K &key) const {
+            Hash  h   = hash(key);
+            usize idx = h % buckets_.len();
+
+            Bucket *bucket = buckets_.get(idx);
+            ASSERT(bucket, "Out of bounds access");
+
+            while (bucket && bucket->key != key) {
+                bucket = collision_buckets_.get(bucket->next_bucket_idx);
+            }
+
+            if (bucket) {
+                return &bucket->value;
+            }
+
+            return nullptr;
+        }
+
+        bool has(const K &key) {
+            return get(key) != nullptr;
+        }
+
+        V &operator[](const K &key) {
+            if (!has(key)) {
+                insert(key, {});
+            }
+
+            return *get(key);
+        }
+
+        const V &operator[](const K &key) const {
+            ASSERT(has(key), "Key not found");
+            return *get(key);
+        }
+
+        void remove(const K &key) {
             Hash  h   = hash(key);
             usize idx = h % buckets_.len();
 
