@@ -8,15 +8,15 @@ namespace Flock {
     static constexpr f32   VECTOR_GROW_FACTOR = 1.4f;
 
     template <typename T>
-    class Vector {
+    class Vec {
         T *        ptr_       = nullptr;
         Allocator *allocator_ = nullptr;
         usize      len_       = 0;
         usize      cap_       = 0;
 
     public:
-        static Vector create() {
-            Vector vector     = {};
+        static Vec create() {
+            Vec vector     = {};
             vector.allocator_ = Allocator::get_global();
             vector.len_       = 0;
             vector.cap_       = VECTOR_INIT_LENGTH;
@@ -26,8 +26,8 @@ namespace Flock {
             return vector;
         }
 
-        static Vector with_cap(usize cap) {
-            Vector vector     = {};
+        static Vec with_cap(usize cap) {
+            Vec vector     = {};
             vector.allocator_ = Allocator::get_global();
             vector.len_       = 0;
             vector.cap_       = cap;
@@ -37,8 +37,8 @@ namespace Flock {
             return vector;
         }
 
-        static Vector with_len(usize len, T fill = {}) {
-            Vector vector     = {};
+        static Vec with_len(usize len, T fill = {}) {
+            Vec vector     = {};
             vector.allocator_ = Allocator::get_global();
             vector.len_       = len;
             vector.cap_       = len;
@@ -53,9 +53,9 @@ namespace Flock {
             return vector;
         }
 
-        Vector() = default;
+        Vec() = default;
 
-        Vector(const Vector &other) {
+        Vec(const Vec &other) {
             allocator_ = Allocator::get_global();
             len_       = other.len_;
             cap_       = other.cap_;
@@ -68,7 +68,7 @@ namespace Flock {
             }
         }
 
-        Vector(Vector &&other) noexcept {
+        Vec(Vec &&other) noexcept {
             allocator_ = other.allocator_;
             len_       = other.len_;
             cap_       = other.cap_;
@@ -80,7 +80,7 @@ namespace Flock {
             other.ptr_       = nullptr;
         }
 
-        Vector &operator=(const Vector &other) {
+        Vec &operator=(const Vec &other) {
             if (this == &other) {
                 return *this;
             }
@@ -101,7 +101,7 @@ namespace Flock {
             return *this;
         }
 
-        Vector &operator=(Vector &&other) noexcept {
+        Vec &operator=(Vec &&other) noexcept {
             if (this == &other) {
                 return *this;
             }
@@ -121,7 +121,7 @@ namespace Flock {
             return *this;
         }
 
-        ~Vector() {
+        ~Vec() {
             free();
         }
 
@@ -314,7 +314,7 @@ namespace Flock {
             return resize(len_ + 1, std::move(element));
         }
 
-        void append(const Vector vector) {
+        void append(const Vec vector) {
             const usize len = vector.len_;
             reserve(len_ + len);
             for (usize i = 0; i < len; i++) {
@@ -352,7 +352,7 @@ namespace Flock {
             return last();
         }
 
-        bool operator==(const Vector &other) const {
+        bool operator==(const Vec &other) const {
             if (len_ != other.len_) {
                 return false;
             }
@@ -366,7 +366,7 @@ namespace Flock {
             return true;
         }
 
-        bool operator!=(const Vector &other) const {
+        bool operator!=(const Vec &other) const {
             return !(*this == other);
         }
 

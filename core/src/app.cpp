@@ -19,7 +19,8 @@ namespace Flock {
     }
 
     bool App::is_running() const {
-        return !window_.should_close();
+        //return !window_.should_close();
+        return false;
     }
 
     void App::start() {

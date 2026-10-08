@@ -6,7 +6,7 @@ add_library(
         include/memory/allocator.hpp
         src/memory/allocator.cpp
         include/maybe.hpp
-        include/collect/vector.hpp
+        include/collect/vec.hpp
         include/collect/string.hpp
         src/collect/string.cpp
         include/hash.hpp
@@ -26,11 +26,35 @@ add_library(
         include/event/event.hpp
         include/memory/ref.hpp
         src/event/event.cpp
+        include/math/vector.hpp
+        include/math/matrix.hpp
+        include/math/math.hpp
 )
 
 target_include_directories(${PROJECT_NAME} PUBLIC ${PROJECT_SOURCE_DIR}/src ${PROJECT_SOURCE_DIR}/include)
 target_compile_definitions(${PROJECT_NAME} PUBLIC FLK_SHARED_BUILD FLK_PLATFORM_SDL3)
 
-CPMAddPackage("gh:libsdl-org/SDL#release-3.4.18")
+set(SANITIZER OFF)
+if (UNIX)
+    target_compile_options(
+            ${PROJECT_NAME} PRIVATE
+            -Wall
+            -Werror
+    )
 
-target_link_libraries(${PROJECT_NAME} PUBLIC SDL3::SDL3)
+    if (SANITIZER)
+        target_compile_options(${PROJECT_NAME} PRIVATE -fsanitize=address)
+        target_link_options(${PROJECT_NAME} PRIVATE -fsanitize=address)
+    endif ()
+endif ()
+
+
+CPMAddPackage("gh:libsdl-org/SDL#release-3.4.18")
+CPMAddPackage(
+        NAME bgfx
+        GITHUB_REPOSITORY bkaradzic/bgfx.cmake
+        GIT_TAG v1.164.9539-583
+        GIT_SHALLOW TRUE
+)
+
+target_link_libraries(${PROJECT_NAME} PUBLIC SDL3::SDL3 bgfx)

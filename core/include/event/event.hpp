@@ -1,7 +1,7 @@
 #pragma once
 
 #include "common.hpp"
-#include "collect/vector.hpp"
+#include "collect/vec.hpp"
 #include "memory/ref.hpp"
 
 namespace Flock {
@@ -15,7 +15,7 @@ namespace Flock {
     Flock::TypeID get_type_id() override { return Flock::type_id<class>(); }
 
     class FLK_API EventStack {
-        Vector<OwnedRef<Event>> events_ = {};
+        Vec<OwnedRef<Event>> events_ = {};
 
     public:
         static EventStack create();
@@ -31,8 +31,8 @@ namespace Flock {
 
     class FLK_API EventHandler {
         EventStack            event_stack_    = {};
-        Vector<EventCallback> callbacks_      = {};
-        Vector<CallbackID>    dead_callbacks_ = {};
+        Vec<EventCallback> callbacks_      = {};
+        Vec<CallbackID>    dead_callbacks_ = {};
 
     public:
         void push(OwnedRef<Event> &&event);

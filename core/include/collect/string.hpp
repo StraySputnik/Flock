@@ -2,7 +2,7 @@
 
 #include "common.hpp"
 #include "hash.hpp"
-#include "vector.hpp"
+#include "vec.hpp"
 
 namespace Flock {
     class String;
@@ -32,7 +32,7 @@ namespace Flock {
     };
 
     class FLK_API String {
-        Vector<char> chars_ = {};
+        Vec<char> chars_ = {};
 
     public:
         static String create();

@@ -23,7 +23,7 @@ namespace Flock {
 }
 
 namespace Flock::SDL {
-    static Vector<SDL_Window *> s_window_ptrs = {};
+    static Vec<SDL_Window *> s_window_ptrs = {};
 
     bool init() {
         if (!SDL_Init(SDL_INIT_VIDEO)) {

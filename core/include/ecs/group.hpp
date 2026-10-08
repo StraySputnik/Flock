@@ -1,7 +1,7 @@
 #pragma once
 
 #include "common.hpp"
-#include "collect/vector.hpp"
+#include "collect/vec.hpp"
 
 namespace Flock::ECS {
     using EntityID                                = u32;
@@ -9,16 +9,16 @@ namespace Flock::ECS {
 
     template <typename T>
     class Group {
-        Vector<usize>    sparse     = {};
-        Vector<EntityID> dense      = {};
-        Vector<T>        components = {};
+        Vec<usize>    sparse     = {};
+        Vec<EntityID> dense      = {};
+        Vec<T>        components = {};
 
     public:
         static Group create(usize cap = GROUP_DEFAULT_CAPACITY) {
             Group group{};
-            group.sparse     = Vector<usize>::with_cap(cap);
-            group.dense      = Vector<EntityID>::with_cap(cap);
-            group.components = Vector<T>::with_cap(cap);
+            group.sparse     = Vec<usize>::with_cap(cap);
+            group.dense      = Vec<EntityID>::with_cap(cap);
+            group.components = Vec<T>::with_cap(cap);
             return group;
         }
 

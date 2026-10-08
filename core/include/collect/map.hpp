@@ -2,7 +2,7 @@
 
 #include "common.hpp"
 #include "hash.hpp"
-#include "vector.hpp"
+#include "vec.hpp"
 
 namespace Flock {
     static constexpr usize MAP_INIT_VECTOR_LENGTH = 8;
@@ -17,15 +17,15 @@ namespace Flock {
             V     value           = {};
         };
 
-        Vector<Bucket> buckets_           = {};
-        Vector<Bucket> collision_buckets_ = {};
-        usize          elem_count_        = 0;
+        Vec<Bucket> buckets_           = {};
+        Vec<Bucket> collision_buckets_ = {};
+        usize       elem_count_        = 0;
 
     public:
         static Map create() {
             Map map{};
-            map.buckets_           = Vector<Bucket>::with_len(MAP_INIT_VECTOR_LENGTH);
-            map.collision_buckets_ = Vector<Bucket>::with_cap(1);
+            map.buckets_           = Vec<Bucket>::with_len(MAP_INIT_VECTOR_LENGTH);
+            map.collision_buckets_ = Vec<Bucket>::with_cap(1);
             map.elem_count_        = 0;
             return map;
         }
@@ -37,7 +37,7 @@ namespace Flock {
         }
 
         void rehash() {
-            auto buckets = Vector<Bucket>::with_cap(elem_count_);
+            auto buckets = Vec<Bucket>::with_cap(elem_count_);
             for (const auto &bucket : buckets_) {
                 if (bucket.next_bucket_idx == MAP_INACTIVE_BUCKET) {
                     continue;

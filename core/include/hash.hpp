@@ -3,31 +3,24 @@
 #include "common.hpp"
 
 namespace Flock {
-    using Hash = u32;
+    using Hash = u64;
 
-    inline Hash hash(const void *data, usize len) {
-        const auto ptr  = (byte *)data;
-        Hash       hash = 0;
-
+    constexpr Hash hash_fnv1a(const void *s, usize len) {
+        Hash h = 14695981039346656037ull;
         for (usize i = 0; i < len; i++) {
-            hash += ptr[i];
-            hash += hash << 10;
-            hash ^= hash >> 6;
+            h ^= static_cast<const byte *>(s)[i];
+            h *= 1099511628211ull;
         }
 
-        hash += hash << 3;
-        hash ^= hash >> 11;
-        hash += hash << 15;
-
-        return hash;
+        return h;
     }
 
-    inline Hash hash(const char *str, usize len) {
-        return hash((void *)str, len);
+    constexpr Hash hash(const char *str, usize len) {
+        return hash_fnv1a(str, len);
     }
 
     template <typename T>
-    Hash hash(const T &value) {
-        return hash(&value, sizeof(T));
+    constexpr Hash hash(const T &value) {
+        return hash_fnv1a(&value, sizeof(T));
     }
 }

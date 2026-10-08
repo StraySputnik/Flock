@@ -2,7 +2,7 @@
 
 #include "common.hpp"
 #include "group.hpp"
-#include "collect/vector.hpp"
+#include "collect/vec.hpp"
 
 namespace Flock::ECS {
     using EntityVersion = u8;
@@ -18,11 +18,11 @@ namespace Flock::ECS {
             bool (*has)(Registry &, EntityID id);
         };
 
-        Vector<usize>          sparse_          = {};
-        Vector<void *>         groups_          = {};
-        Vector<GroupInterface> interfaces_      = {};
-        Vector<EntityVersion>  entity_versions_ = {};
-        Vector<EntityID>       dead_entities_   = {};
+        Vec<usize>          sparse_          = {};
+        Vec<void *>         groups_          = {};
+        Vec<GroupInterface> interfaces_      = {};
+        Vec<EntityVersion>  entity_versions_ = {};
+        Vec<EntityID>       dead_entities_   = {};
 
     public:
         static Registry create() {

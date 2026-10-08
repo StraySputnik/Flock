@@ -76,19 +76,19 @@ namespace Flock {
 
     String String::create() {
         String string{};
-        string.chars_ = Vector<char>::create();
+        string.chars_ = Vec<char>::create();
         return string;
     }
 
     String String::with_cap(usize cap) {
         String string{};
-        string.chars_ = Vector<char>::with_cap(cap);
+        string.chars_ = Vec<char>::with_cap(cap);
         return string;
     }
 
     String String::with_len(usize len) {
         String string{};
-        string.chars_ = Vector<char>::with_len(len, ' ');
+        string.chars_ = Vec<char>::with_len(len, ' ');
         return string;
     }
 
@@ -96,7 +96,7 @@ namespace Flock {
         const usize len = strlen(c_str);
 
         String string{};
-        string.chars_ = Vector<char>::with_cap(len);
+        string.chars_ = Vec<char>::with_cap(len);
 
         for (usize i = 0; i < len; i++) {
             string.chars_.push(c_str[i]);

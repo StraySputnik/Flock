@@ -1,7 +1,7 @@
 #pragma once
 
 #include "common.hpp"
-#include "collect/vector.hpp"
+#include "collect/vec.hpp"
 #include "collect/map.hpp"
 
 namespace Flock::ECS {
@@ -16,8 +16,8 @@ namespace Flock::ECS {
     };
 
     class FLK_API Schedule {
-        Map<Stage, Vector<System>>    systems_     = {};
-        Map<Stage, Vector<MutSystem>> mut_systems_ = {};
+        Map<Stage, Vec<System>>    systems_     = {};
+        Map<Stage, Vec<MutSystem>> mut_systems_ = {};
 
     public:
         static Schedule create();
