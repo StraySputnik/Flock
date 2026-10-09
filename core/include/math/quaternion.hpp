@@ -1,4 +1,4 @@
-// Code adapted from: https://github.com/MartinWeigel/Quaternion/blob/master/Quaternion.c
+// Code adapted from_c_str: https://github.com/MartinWeigel/Quaternion/blob/master/Quaternion.c
 //
 // Copyright 2018 Martin Weigel <mail@MartinWeigel.com>
 //

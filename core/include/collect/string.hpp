@@ -13,6 +13,7 @@ namespace Flock {
 
     public:
         static StringSlice create(const char *ptr, usize len);
+        static StringSlice from_c_str(const char *c_str);
 
         usize len() const;
         bool  is_empty() const;
@@ -22,7 +23,7 @@ namespace Flock {
         const char *first() const;
         const char *last() const;
 
-        String to_string();
+        String to_string() const;
 
         bool operator==(const StringSlice &other) const;
         bool operator!=(const StringSlice &other) const;
@@ -38,14 +39,14 @@ namespace Flock {
         static String create();
         static String with_cap(usize cap);
         static String with_len(usize len);
-        static String from(const char *c_str);
+        static String from_c_str(const char *c_str);
 
         void free();
 
         void reserve(usize cap);
         void shrink_to(usize cap);
         void shrink_to_fit();
-        void resize(usize len, char fill = {});
+        String &resize(usize len, char fill = {});
         void fill(char fill);
 
         usize      len() const;
@@ -63,7 +64,7 @@ namespace Flock {
         const char *first() const;
         const char *last() const;
 
-        void push(char element);
+        String &push(char element);
         void append(const String &c_str);
         void append(const char *c_str);
         char pop();

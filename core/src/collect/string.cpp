@@ -10,6 +10,13 @@ namespace Flock {
         return slice;
     }
 
+    StringSlice StringSlice::from_c_str(const char *c_str) {
+        StringSlice slice{};
+        slice.ptr_ = c_str;
+        slice.len_ = strlen(c_str);
+        return slice;
+    }
+
     usize StringSlice::len() const {
         return len_;
     }
@@ -39,7 +46,7 @@ namespace Flock {
         return get(len_ - 1);
     }
 
-    String StringSlice::to_string() {
+    String StringSlice::to_string() const {
         auto str = String::with_cap(len_);
         for (const auto c : *this) {
             str.push(c);
@@ -92,7 +99,7 @@ namespace Flock {
         return string;
     }
 
-    String String::from(const char *c_str) {
+    String String::from_c_str(const char *c_str) {
         const usize len = strlen(c_str);
 
         String string{};
@@ -121,8 +128,9 @@ namespace Flock {
         return chars_.shrink_to_fit();
     }
 
-    void String::resize(usize len, char fill) {
-        return chars_.resize(len, fill);
+    String &String::resize(usize len, char fill) {
+        chars_.resize(len, fill);
+        return *this;
     }
 
     void String::fill(char fill) {
@@ -177,8 +185,9 @@ namespace Flock {
         return chars_.last();
     }
 
-    void String::push(char element) {
-        return chars_.push(element);
+    String &String::push(char element) {
+        chars_.push(element);
+        return *this;
     }
 
     void String::append(const String &c_str) {

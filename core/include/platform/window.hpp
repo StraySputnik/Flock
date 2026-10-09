@@ -32,7 +32,7 @@ namespace Flock {
     EventStack poll_platform_events();
 
     struct FLK_API WindowConfig {
-        String name   = String::from("Flock");
+        String name   = String::from_c_str("Flock");
         u16    width  = 1080;
         u16    height = 720;
     };

@@ -16,7 +16,7 @@ namespace Flock {
 
     public:
         static Vec create() {
-            Vec vector     = {};
+            Vec vector        = {};
             vector.allocator_ = Allocator::get_global();
             vector.len_       = 0;
             vector.cap_       = VECTOR_INIT_LENGTH;
@@ -27,7 +27,7 @@ namespace Flock {
         }
 
         static Vec with_cap(usize cap) {
-            Vec vector     = {};
+            Vec vector        = {};
             vector.allocator_ = Allocator::get_global();
             vector.len_       = 0;
             vector.cap_       = cap;
@@ -38,7 +38,7 @@ namespace Flock {
         }
 
         static Vec with_len(usize len, T fill = {}) {
-            Vec vector     = {};
+            Vec vector        = {};
             vector.allocator_ = Allocator::get_global();
             vector.len_       = len;
             vector.cap_       = len;
@@ -182,7 +182,7 @@ namespace Flock {
             shrink_to(len_);
         }
 
-        void resize(usize len) {
+        Vec &resize(usize len) {
             if (len > len_) {
                 if (len > cap_) {
                     reserve(len);
@@ -198,9 +198,10 @@ namespace Flock {
             }
 
             len_ = len;
+            return *this;
         }
 
-        void resize(usize len, const T &fill) {
+        Vec &resize(usize len, const T &fill) {
             if (len > len_) {
                 if (len > cap_) {
                     reserve(len);
@@ -216,9 +217,10 @@ namespace Flock {
             }
 
             len_ = len;
+            return *this;
         }
 
-        void resize(usize len, T &&fill) {
+        Vec &resize(usize len, T &&fill) {
             if (len > len_) {
                 if (len > cap_) {
                     reserve(len);
@@ -234,6 +236,7 @@ namespace Flock {
             }
 
             len_ = len;
+            return *this;
         }
 
         void fill(T value) {
@@ -306,11 +309,11 @@ namespace Flock {
             return get(len_ - 1);
         }
 
-        void push(const T &element = {}) {
+        Vec &push(const T &element = {}) {
             return resize(len_ + 1, element);
         }
 
-        void push(T &&element) {
+        Vec &push(T &&element) {
             return resize(len_ + 1, std::move(element));
         }
 

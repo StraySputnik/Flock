@@ -1,4 +1,4 @@
-project(flock_core)
+project(flock_core CXX)
 
 add_library(
         ${PROJECT_NAME} SHARED
@@ -30,7 +30,10 @@ add_library(
         include/math/matrix.hpp
         include/math/math.hpp
         include/math/quaternion.hpp
+        include/graphics/renderer.hpp
         include/math/color.hpp
+        include/asset/asset.hpp
+        src/asset/asset.cpp
 )
 
 target_include_directories(${PROJECT_NAME} PUBLIC ${PROJECT_SOURCE_DIR}/src ${PROJECT_SOURCE_DIR}/include)
@@ -53,10 +56,16 @@ endif ()
 
 CPMAddPackage("gh:libsdl-org/SDL#release-3.4.18")
 CPMAddPackage(
+        NAME tinyobjloader
+        GITHUB_REPOSITORY tinyobjloader/tinyobjloader
+        GIT_TAG release
+)
+
+CPMAddPackage(
         NAME bgfx
         GITHUB_REPOSITORY bkaradzic/bgfx.cmake
         GIT_TAG v1.164.9539-583
         GIT_SHALLOW TRUE
 )
 
-target_link_libraries(${PROJECT_NAME} PUBLIC SDL3::SDL3 bgfx)
+target_link_libraries(${PROJECT_NAME} PUBLIC SDL3::SDL3 bgfx tinyobjloader_c)

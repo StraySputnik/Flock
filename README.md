@@ -4,24 +4,26 @@
 
 A C++ game engine inspired by Bevy (hence the name).
 
-## Features
-- [ ] ECS
-- [ ] PBR
-- [ ] IBL
-- [ ] Keyboard & Mouse Input
+## Roadmap
+- [x] Core systems (Memory, Collections, Mathematics, etc.)
+- [x] ECS
+- [x] Windowing
+- [ ] Asset loading
+- [ ] Graphics
+- [ ] Input
 - [ ] Audio
-- [ ] Serialization
 - [ ] Physics
-- [ ] Editor GUI
+- [ ] Serialization
 - [ ] In-game GUI
-- [ ] Editor 
+- [ ] Editor GUI
+- [ ] Editor
 
 ## Building from Source
 
 Make sure you have Git, a C++ compiler, and CMake installed and run the following commands:
 
 ```sh
-git clone https://github.com/Pixels67/Flock.git
+git clone https://github.com/StraySputnik/Flock.git
 cd Flock
 
 cmake -S . -B build/
