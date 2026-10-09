@@ -6,6 +6,8 @@
 #include "matrix.hpp"
 
 namespace Flock::Math {
+    struct Quaternion;
+
     template <typename T>
     struct Vector2 {
         T x = 0, y = 0;
@@ -38,12 +40,20 @@ namespace Flock::Math {
             return {.x = -1, .y = 0};
         }
 
-        T magnitude() const {
+        static f32 distance(const Vector2 &lhs, const Vector2 &rhs) {
+            return (rhs - lhs).magnitude();
+        }
+
+        static T sqr_distance(const Vector2 &lhs, const Vector2 &rhs) {
+            return (rhs - lhs).sqr_magnitude();
+        }
+
+        f32 magnitude() const {
             return sqrt(sqr_magnitude());
         }
 
         T sqr_magnitude() const {
-            return x * y;
+            return x * x + y * y;
         }
 
         Vector2 &normalize() {
@@ -192,12 +202,20 @@ namespace Flock::Math {
             return {.x = 0, .y = 0, .z = -1};
         }
 
-        T magnitude() const {
+        static f32 distance(const Vector3 &lhs, const Vector3 &rhs) {
+            return (rhs - lhs).magnitude();
+        }
+
+        static T sqr_distance(const Vector3 &lhs, const Vector3 &rhs) {
+            return (rhs - lhs).sqr_magnitude();
+        }
+
+        f32 magnitude() const {
             return sqrt(sqr_magnitude());
         }
 
         T sqr_magnitude() const {
-            return x * y * z;
+            return x * x + y * y + z * z;
         }
 
         Vector3 &normalize() {
@@ -261,6 +279,14 @@ namespace Flock::Math {
             };
         }
 
+        Vector3 operator*(const Matrix4<T> &mat) const {
+            Vector3 vec{};
+            vec.x = x * mat.get(0, 0) + y * mat.get(0, 1) + z * mat.get(0, 2) + 1 * mat.get(0, 3);
+            vec.y = x * mat.get(1, 0) + y * mat.get(1, 1) + z * mat.get(1, 2) + 1 * mat.get(1, 3);
+            vec.z = x * mat.get(2, 0) + y * mat.get(2, 1) + z * mat.get(2, 2) + 1 * mat.get(2, 3);
+            return vec;
+        }
+
         Vector3 operator/(const Vector3 &other) const {
             return Vector3{
                 .x = x / other.x,
@@ -305,6 +331,11 @@ namespace Flock::Math {
             return *this;
         }
 
+        Vector3 &operator *=(const Matrix4<T> &mat) {
+            *this = *this * mat;
+            return *this;
+        }
+
         Vector3 &operator/=(const Vector3 &other) {
             x /= other.x;
             y /= other.y;
@@ -319,18 +350,8 @@ namespace Flock::Math {
             return *this;
         }
 
-        Vector3 operator*(const Matrix4<T> &mat) const {
-            Vector3 vec{};
-            vec.x = x * mat.get(0, 0) + y * mat.get(0, 1) + z * mat.get(0, 2) + 1 * mat.get(0, 3);
-            vec.y = x * mat.get(1, 0) + y * mat.get(1, 1) + z * mat.get(1, 2) + 1 * mat.get(1, 3);
-            vec.z = x * mat.get(2, 0) + y * mat.get(2, 1) + z * mat.get(2, 2) + 1 * mat.get(2, 3);
-            return vec;
-        }
-
-        Vector3 &operator *=(const Matrix4<T> &mat) {
-            *this = *this * mat;
-            return *this;
-        }
+        Vector3  operator*(const Quaternion &q) const;
+        Vector3 &operator *=(const Quaternion &quat);
 
         bool operator==(const Vector3 &other) const {
             return x == other.x && y == other.y && z == other.z;
@@ -357,12 +378,20 @@ namespace Flock::Math {
             return {.x = 1, .y = 1, .z = 1, .w = 1};
         }
 
-        T magnitude() const {
+        static f32 distance(const Vector4 &lhs, const Vector4 &rhs) {
+            return (rhs - lhs).magnitude();
+        }
+
+        static T sqr_distance(const Vector4 &lhs, const Vector4 &rhs) {
+            return (rhs - lhs).sqr_magnitude();
+        }
+
+        f32 magnitude() const {
             return sqrt(sqr_magnitude());
         }
 
         T sqr_magnitude() const {
-            return x * y * z * w;
+            return x * x + y * y + z * z + w * w;
         }
 
         Vector4 &normalize() {

@@ -29,6 +29,7 @@ add_library(
         include/math/vector.hpp
         include/math/matrix.hpp
         include/math/math.hpp
+        include/math/quaternion.hpp
 )
 
 target_include_directories(${PROJECT_NAME} PUBLIC ${PROJECT_SOURCE_DIR}/src ${PROJECT_SOURCE_DIR}/include)

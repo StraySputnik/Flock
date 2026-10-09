@@ -5,6 +5,7 @@
 #include <cstdint>
 #include <cstddef>
 #include <cstdio>
+#include <csignal>
 
 namespace Flock {
     using u8  = uint8_t;
@@ -55,7 +56,7 @@ namespace Flock {
 #   endif
 #endif
 
-#define PANIC() abort()
+#define PANIC() raise(SIGTRAP)
 
 #define ASSERT(c, msg)                                                           \
     do {                                                                         \

@@ -227,6 +227,32 @@ namespace Flock::Math {
             return mat;
         }
 
+        Matrix4 operator/(const Matrix4 &other) const {
+            return *this * other.inverse();
+        }
+
+        Matrix4 operator+(T other) const {
+            Matrix4 mat{};
+            for (u8 col = 0; col < 4; col++) {
+                for (u8 row = 0; row < 4; row++) {
+                    mat.get(row, col) = get(row, col) + other;
+                }
+            }
+
+            return mat;
+        }
+
+        Matrix4 operator-(T other) const {
+            Matrix4 mat{};
+            for (u8 col = 0; col < 4; col++) {
+                for (u8 row = 0; row < 4; row++) {
+                    mat.get(row, col) = get(row, col) - other;
+                }
+            }
+
+            return mat;
+        }
+
         Matrix4 operator*(T other) const {
             Matrix4 mat{};
             for (u8 col = 0; col < 4; col++) {
@@ -236,6 +262,57 @@ namespace Flock::Math {
             }
 
             return mat;
+        }
+
+        Matrix4 operator/(T other) const {
+            Matrix4 mat{};
+            for (u8 col = 0; col < 4; col++) {
+                for (u8 row = 0; row < 4; row++) {
+                    mat.get(row, col) = get(row, col) / other;
+                }
+            }
+
+            return mat;
+        }
+
+        Matrix4 &operator+=(const Matrix4 &other) {
+            *this = *this + other;
+            return *this;
+        }
+
+        Matrix4 &operator-=(const Matrix4 &other) {
+            *this = *this - other;
+            return *this;
+        }
+
+        Matrix4 &operator*=(const Matrix4 &other) {
+            *this = *this * other;
+            return *this;
+        }
+
+        Matrix4 &operator/=(const Matrix4 &other) {
+            *this = *this / other;
+            return *this;
+        }
+
+        Matrix4 &operator+=(T other) {
+            *this = *this + other;
+            return *this;
+        }
+
+        Matrix4 &operator-=(T other) {
+            *this = *this - other;
+            return *this;
+        }
+
+        Matrix4 &operator*=(T other) {
+            *this = *this * other;
+            return *this;
+        }
+
+        Matrix4 &operator/=(T other) {
+            *this = *this / other;
+            return *this;
         }
 
         bool operator==(const Matrix4 &other) const {
