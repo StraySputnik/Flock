@@ -56,7 +56,14 @@ namespace Flock {
 #   endif
 #endif
 
-#define PANIC() raise(SIGTRAP)
+#if defined(_MSC_VER)
+#   include <intrin.h>
+#   define PANIC() __debugbreak()
+#elif defined(__has_builtin) && __has_builtin(__builtin_debugtrap)
+#   define PANIC() __builtin_debugtrap()
+#else
+#   define PANIC() raise(SIGTRAP)
+#endif
 
 #define ASSERT(c, msg)                                                           \
     do {                                                                         \

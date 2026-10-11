@@ -130,9 +130,19 @@ namespace Flock {
         return;
       }
 
+#if __GNUC__
+      if (len_ > cap_) {
+        __builtin_unreachable();
+      }
+#endif
+
       for (usize i = 0; i < len_; i++) {
         ptr_[i].~T();
       }
+
+      ptr_ = nullptr;
+      len_ = 0;
+      cap_ = 0;
 
       Flock::release(allocator_, ptr_, cap_ * sizeof(T));
     }
