@@ -48,7 +48,7 @@ namespace Flock {
         return *this;
       }
 
-      free();
+      release();
 
       ptr_             = other.ptr_;
       allocator_       = other.allocator_;
@@ -59,16 +59,17 @@ namespace Flock {
     }
 
     ~OwnedRef() {
-      free();
+      release();
     }
 
-    void free() {
+    void release() {
       if (!ptr_) {
         return;
       }
 
       ptr_->~T();
-      allocator_->free(ptr_, sizeof(T));
+      allocator_->release(ptr_, sizeof(T));
+      ptr_ = nullptr;
     }
 
     T *get() {
@@ -89,12 +90,12 @@ namespace Flock {
       return ptr_;
     }
 
-    T &operator *() {
+    T *operator *() {
       ASSERT(ptr_, "Deref on invalid OwnedRef");
       return ptr_;
     }
 
-    const T &operator*() const {
+    const T *operator*() const {
       ASSERT(ptr_, "Deref on invalid OwnedRef");
       return ptr_;
     }
@@ -120,7 +121,7 @@ namespace Flock {
       ASSERT(ref.ptr_, "Allocation failed");
       *ref.ptr_ = value;
 
-      ref_counts_[ref.ptr_]++;
+      ++ref_counts_[ref.ptr_];
       return ref;
     }
 
@@ -129,7 +130,7 @@ namespace Flock {
       SharedRef ref{};
       ref.allocator_ = allocator;
       ref.ptr_       = ptr;
-      ref_counts_[ref.ptr_]++;
+      ++ref_counts_[ref.ptr_];
       return ref;
     }
 
@@ -139,7 +140,7 @@ namespace Flock {
       ptr_       = other.ptr_;
       allocator_ = other.allocator_;
 
-      ref_counts_[ptr_]++;
+      ++ref_counts_[ptr_];
     };
 
     SharedRef(SharedRef &&other) noexcept {
@@ -154,7 +155,7 @@ namespace Flock {
         return *this;
       }
 
-      free();
+      release();
 
       ptr_       = other.ptr_;
       allocator_ = other.allocator_;
@@ -168,7 +169,7 @@ namespace Flock {
         return *this;
       }
 
-      free();
+      release();
 
       ptr_             = other.ptr_;
       allocator_       = other.allocator_;
@@ -179,10 +180,10 @@ namespace Flock {
     }
 
     ~SharedRef() {
-      free();
+      release();
     }
 
-    void free() {
+    void release() {
       if (!ptr_) {
         return;
       }
@@ -190,7 +191,7 @@ namespace Flock {
       ref_counts_[ptr_]--;
       if (ref_counts_[ptr_] == 0) {
         ptr_->~T();
-        allocator_->free(ptr_, sizeof(T));
+        allocator_->release(ptr_, sizeof(T));
       }
     }
 
@@ -212,12 +213,12 @@ namespace Flock {
       return ptr_;
     }
 
-    T &operator *() {
+    T *operator *() {
       ASSERT(ptr_, "Deref on invalid OwnedRef");
       return ptr_;
     }
 
-    const T &operator*() const {
+    const T *operator*() const {
       ASSERT(ptr_, "Deref on invalid OwnedRef");
       return ptr_;
     }

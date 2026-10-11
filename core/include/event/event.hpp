@@ -14,25 +14,13 @@ namespace Flock {
 #define EVENT(class) \
     Flock::TypeID get_type_id() override { return Flock::type_id<class>(); }
 
-  class FLK_API EventStack {
-    Vec<OwnedRef<Event>> events_ = {};
-
-  public:
-    static EventStack create();
-
-    void            push(OwnedRef<Event> &&event);
-    OwnedRef<Event> pop();
-
-    bool is_empty() const;
-  };
-
   using EventCallback = void(*)(Event *event);
   using CallbackID    = usize;
 
   class FLK_API EventHandler {
-    EventStack         event_stack_    = {};
-    Vec<EventCallback> callbacks_      = {};
-    Vec<CallbackID>    dead_callbacks_ = {};
+    Vec<OwnedRef<Event>> events_         = {};
+    Vec<EventCallback>   callbacks_      = {};
+    Vec<CallbackID>      dead_callbacks_ = {};
 
   public:
     void push(OwnedRef<Event> &&event);

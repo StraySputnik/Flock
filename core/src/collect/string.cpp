@@ -78,7 +78,7 @@ namespace Flock {
   }
 
   const char *StringSlice::end() const {
-    return last();
+    return last() + 1;
   }
 
   String String::create() {
@@ -112,8 +112,8 @@ namespace Flock {
     return string;
   }
 
-  void String::free() {
-    chars_.free();
+  void String::release() {
+    chars_.release();
   }
 
   void String::reserve(usize cap) {

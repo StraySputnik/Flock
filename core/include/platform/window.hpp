@@ -29,7 +29,7 @@ namespace Flock {
     }
   };
 
-  EventStack poll_platform_events();
+  Vec<OwnedRef<Event>> poll_platform_events();
 
   struct FLK_API WindowConfig {
     String name   = String::from_c_str("Flock");
@@ -49,7 +49,7 @@ namespace Flock {
     virtual StringSlice get_name() const = 0;
     virtual WindowID    get_id() const = 0;
 
-    virtual bool       should_close() const = 0;
-    virtual EventStack consume_events(EventStack &events) = 0;
+    virtual bool                 should_close() const = 0;
+    virtual Vec<OwnedRef<Event>> consume_events(Vec<OwnedRef<Event>> &) = 0;
   };
 }

@@ -5,9 +5,9 @@
 #include <SDL3/SDL.h>
 
 namespace Flock {
-  EventStack poll_platform_events() {
-    EventStack stack;
-    SDL_Event  event;
+  Vec<OwnedRef<Event>> poll_platform_events() {
+    Vec<OwnedRef<Event>> stack;
+    SDL_Event            event;
     while (SDL_PollEvent(&event)) {
       switch (event.type) {
         case SDL_EVENT_WINDOW_CLOSE_REQUESTED:
@@ -66,7 +66,7 @@ namespace Flock::SDL {
     window_ptr_         = other.window_ptr_;
     config_             = other.config_;
     should_close_       = other.should_close_;
-    event_stack_        = std::move(other.event_stack_);
+    events_             = std::move(other.events_);
     other.window_ptr_   = nullptr;
     other.config_       = {};
     other.should_close_ = true;
@@ -77,12 +77,12 @@ namespace Flock::SDL {
       return *this;
     }
 
-    free();
+    release();
 
     window_ptr_         = other.window_ptr_;
     config_             = other.config_;
     should_close_       = other.should_close_;
-    event_stack_        = std::move(other.event_stack_);
+    events_             = std::move(other.events_);
     other.window_ptr_   = nullptr;
     other.config_       = {};
     other.should_close_ = true;
@@ -91,10 +91,10 @@ namespace Flock::SDL {
   }
 
   Window::~Window() {
-    free();
+    release();
   }
 
-  void Window::free() {
+  void Window::release() {
     if (!window_ptr_) {
       return;
     }
@@ -149,12 +149,13 @@ namespace Flock::SDL {
     return should_close_;
   }
 
-  EventStack Window::consume_events(EventStack &events) {
-    EventStack new_stack = EventStack::create();
+  Vec<OwnedRef<Event>> Window::consume_events(Vec<OwnedRef<Event>> &events) {
+    Vec<OwnedRef<Event>> new_stack = Vec<OwnedRef<Event>>::create();
     while (!events.is_empty()) {
       OwnedRef<Event> event = events.pop();
-      if (static_cast<WindowEvent>(event).get_window_id() == get_id()) {
-        event_stack_.push(std::move(event));
+      const auto *window_event = dynamic_cast<WindowEvent *>(event.get());
+      if (window_event->get_window_id() == get_id()) {
+        events_.push(std::move(event));
         if (event->get_type_id() == type_id<WindowClosedEvent>()) {
           should_close_ = true;
         }

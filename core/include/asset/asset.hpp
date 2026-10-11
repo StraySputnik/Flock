@@ -10,7 +10,7 @@ namespace Flock::Asset {
   using AssetID                          = u64;
   static constexpr AssetID INVALID_ASSET = INVALID_64;
 
-  constexpr AssetID get_asset_id(StringSlice filepath) {
+  constexpr AssetID get_asset_id(const StringSlice filepath) {
     return hash(filepath);
   }
 
@@ -31,13 +31,13 @@ namespace Flock::Asset {
     AssetID asset_id = INVALID_ASSET;
     String  filepath = {};
 
-    bool is_valid() const {
+    [[nodiscard]] bool is_valid() const {
       return asset_id != INVALID_ASSET;
     }
   };
 
   template<typename T>
-  AssetHandle<T> asset_path(StringSlice filepath) {
+  AssetHandle<T> asset_path(const StringSlice filepath) {
     return AssetHandle<T>{
       .asset_id = get_asset_id(filepath),
       .filepath = filepath.to_string()

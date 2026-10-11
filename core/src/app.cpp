@@ -30,7 +30,7 @@ namespace Flock {
   }
 
   void App::update() {
-    EventStack events = poll_platform_events();
+    Vec<OwnedRef<Event>> events = poll_platform_events();
     window_.consume_events(events);
   }
 

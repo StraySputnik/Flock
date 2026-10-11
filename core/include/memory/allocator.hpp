@@ -18,13 +18,13 @@ namespace Flock {
 
     virtual void *alloc(usize size, usize align) = 0;
     virtual void *realloc(void *src, usize src_size, usize dest_size, usize align) = 0;
-    virtual void  free(void *ptr, usize size) = 0;
+    virtual void  release(void *ptr, usize size) = 0;
     virtual void  clear() = 0;
   };
 
   void *alloc(Allocator *allocator, usize size, usize align = alignof(usize));
   void *realloc(Allocator *allocator, void *src, usize src_size, usize dest_size, usize align = alignof(usize));
-  void  free(Allocator *allocator, void *ptr, usize size);
+  void  release(Allocator *allocator, void *ptr, usize size);
 
   class BumpAllocator : public Allocator {
     byte *ptr_    = nullptr;
@@ -46,7 +46,7 @@ namespace Flock {
 
     void *alloc(usize size, usize align = alignof(usize)) override;
     void *realloc(void *src, usize src_size, usize dest_size, usize align = alignof(usize)) override;
-    void  free(void *ptr, usize size) override;
+    void  release(void *ptr, usize size) override;
     void  clear() override;
 
     void set_global();

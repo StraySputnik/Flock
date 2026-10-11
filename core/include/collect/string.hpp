@@ -41,7 +41,7 @@ namespace Flock {
     static String with_len(usize len);
     static String from_c_str(const char *c_str);
 
-    void free();
+    void release();
 
     void    reserve(usize cap);
     void    shrink_to(usize cap);
@@ -81,5 +81,5 @@ namespace Flock {
     const char *end() const;
   };
 
-    FLK_API Hash hash(const String &string);
+  FLK_API Hash hash(const String &string);
 }

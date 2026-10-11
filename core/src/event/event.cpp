@@ -1,24 +1,8 @@
 #include "event/event.hpp"
 
 namespace Flock {
-  EventStack EventStack::create() {
-    return EventStack{};
-  }
-
-  void EventStack::push(OwnedRef<Event> &&event) {
-    events_.push(std::move(event));
-  }
-
-  OwnedRef<Event> EventStack::pop() {
-    return events_.pop();
-  }
-
-  bool EventStack::is_empty() const {
-    return events_.is_empty();
-  }
-
   void EventHandler::push(OwnedRef<Event> &&event) {
-    event_stack_.push(std::move(event));
+    events_.push(std::move(event));
   }
 
   void EventHandler::dispatch(OwnedRef<Event> &&event) {
@@ -52,7 +36,7 @@ namespace Flock {
   }
 
   void EventHandler::handle_events() {
-    while (OwnedRef<Event> event = event_stack_.pop()) {
+    while (OwnedRef<Event> event = events_.pop()) {
       dispatch(std::move(event));
     }
   }

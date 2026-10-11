@@ -30,13 +30,17 @@ namespace Flock {
       return map;
     }
 
-    void free() {
-      buckets_.free();
-      collision_buckets_.free();
+    void release() {
+      buckets_.release();
+      collision_buckets_.release();
       elem_count_ = 0;
     }
 
     void rehash() {
+      if (buckets_.is_empty()) {
+        return;
+      }
+
       auto buckets = Vec<Bucket>::with_cap(elem_count_);
       for (const auto &bucket: buckets_) {
         if (bucket.next_bucket_idx == MAP_INACTIVE_BUCKET) {
@@ -74,6 +78,10 @@ namespace Flock {
     void insert(const K &key, const V &value) {
       ASSERT(!get(key), "Insert on an existing element");
 
+      if (buckets_.is_empty()) {
+        buckets_.resize(MAP_INIT_VECTOR_LENGTH);
+      }
+
       const f32 load_factor = static_cast<f32>(elem_count_) / static_cast<f32>(buckets_.len());
       if (load_factor > MAP_LOAD_FACTOR) {
         buckets_.grow();
@@ -85,6 +93,10 @@ namespace Flock {
     }
 
     V *get(const K &key) {
+      if (buckets_.is_empty()) {
+        return nullptr;
+      }
+
       Hash  h   = hash(key);
       usize idx = h % buckets_.len();
 
@@ -103,6 +115,10 @@ namespace Flock {
     }
 
     const V *get(const K &key) const {
+      if (buckets_.is_empty()) {
+        return nullptr;
+      }
+
       Hash  h   = hash(key);
       usize idx = h % buckets_.len();
 
@@ -138,6 +154,10 @@ namespace Flock {
     }
 
     void remove(const K &key) {
+      if (buckets_.is_empty()) {
+        return;
+      }
+
       Hash  h   = hash(key);
       usize idx = h % buckets_.len();
 

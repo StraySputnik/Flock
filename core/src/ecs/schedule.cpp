@@ -5,17 +5,17 @@ namespace Flock::ECS {
     return Schedule{};
   }
 
-  Schedule &Schedule::add_system(Stage stage, const System &system) {
-    systems_.get(stage)->push(system);
+  Schedule &Schedule::add_system(const Stage stage, const System &system) {
+    systems_[stage].push(system);
     return *this;
   }
 
-  Schedule &Schedule::add_system(Stage stage, const MutSystem &system) {
-    mut_systems_.get(stage)->push(system);
+  Schedule &Schedule::add_system(const Stage stage, const MutSystem &system) {
+    mut_systems_[stage].push(system);
     return *this;
   }
 
-  void Schedule::execute(Stage stage, World &world) {
+  void Schedule::execute(const Stage stage, World &world) {
     for (const auto &sys: *systems_.get(stage)) {
       sys(world);
     }

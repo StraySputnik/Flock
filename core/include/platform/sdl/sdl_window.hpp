@@ -15,10 +15,10 @@ namespace Flock::SDL {
   class FLK_API Window : public Flock::Window {
     inline static usize s_window_count_ = 0;
 
-    SDL_Window * window_ptr_   = nullptr;
-    WindowConfig config_       = {};
-    bool         should_close_ = false;
-    EventStack   event_stack_  = {};
+    SDL_Window *         window_ptr_   = nullptr;
+    WindowConfig         config_       = {};
+    bool                 should_close_ = false;
+    Vec<OwnedRef<Event>> events_       = {};
 
   public:
     static Maybe<Window> create(WindowConfig config);
@@ -33,7 +33,7 @@ namespace Flock::SDL {
 
     ~Window() override;
 
-    void free();
+    void release();
 
     void resize(u16 w, u16 h) override;
     void rename(StringSlice new_name) override;
@@ -43,8 +43,8 @@ namespace Flock::SDL {
     StringSlice get_name() const override;
     WindowID    get_id() const override;
 
-    bool       should_close() const override;
-    EventStack consume_events(EventStack &events) override;
+    bool                 should_close() const override;
+    Vec<OwnedRef<Event>> consume_events(Vec<OwnedRef<Event>> &events) override;
   };
 }
 

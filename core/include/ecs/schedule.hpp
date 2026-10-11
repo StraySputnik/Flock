@@ -23,8 +23,8 @@ namespace Flock::ECS {
     static Schedule create();
 
     template<typename... Args>
-    void add_systems(Args... systems) {
-      (add_system(systems), ...);
+    void add_systems(Stage stage, Args... systems) {
+      (add_system(stage, systems), ...);
     }
 
     Schedule &add_system(Stage stage, const System &system);

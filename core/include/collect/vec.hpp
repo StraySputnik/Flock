@@ -85,7 +85,7 @@ namespace Flock {
         return *this;
       }
 
-      free();
+      release();
 
       allocator_ = Allocator::get_global();
       len_       = other.len_;
@@ -106,7 +106,7 @@ namespace Flock {
         return *this;
       }
 
-      free();
+      release();
 
       allocator_ = other.allocator_;
       len_       = other.len_;
@@ -122,10 +122,10 @@ namespace Flock {
     }
 
     ~Vec() {
-      free();
+      release();
     }
 
-    void free() {
+    void release() {
       if (!ptr_) {
         return;
       }
@@ -134,7 +134,7 @@ namespace Flock {
         ptr_[i].~T();
       }
 
-      Flock::free(allocator_, ptr_, cap_ * sizeof(T));
+      Flock::release(allocator_, ptr_, cap_ * sizeof(T));
     }
 
     void grow() {
@@ -352,7 +352,7 @@ namespace Flock {
     }
 
     T *end() {
-      return last();
+      return last() + 1;
     }
 
     bool operator==(const Vec &other) const {
@@ -378,7 +378,7 @@ namespace Flock {
     }
 
     const T *end() const {
-      return last();
+      return last() + 1;
     }
   };
 }

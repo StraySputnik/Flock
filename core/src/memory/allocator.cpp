@@ -69,12 +69,12 @@ namespace Flock {
     return allocator->realloc(src, src_size, dest_size, align);
   }
 
-  void free(Allocator *allocator, void *ptr, usize size) {
+  void release(Allocator *allocator, void *ptr, usize size) {
     if (!allocator) {
       return sys_free(ptr);
     }
 
-    return allocator->free(ptr, size);
+    return allocator->release(ptr, size);
   }
 
   Maybe<BumpAllocator> BumpAllocator::create(usize size) {
@@ -126,7 +126,7 @@ namespace Flock {
   void *BumpAllocator::alloc(usize size, usize align) {
     ASSERT(ptr_, "Operation on an uninitialized object");
 
-    usize allocation_offset = align - (usize)(ptr_ + offset_) % align;
+    usize allocation_offset = align - (usize) (ptr_ + offset_) % align;
     allocation_offset       = allocation_offset == align ? 0 : allocation_offset;
 
     if (size_ < offset_ + allocation_offset + size) {
@@ -153,7 +153,7 @@ namespace Flock {
     return dest;
   }
 
-  void BumpAllocator::free(void *ptr, usize size) {
+  void BumpAllocator::release(void *ptr, usize size) {
     ASSERT(ptr_, "Operation on an uninitialized object");
     // No-op
   }
