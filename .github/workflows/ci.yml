@@ -59,7 +59,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: |
-            ${{ steps.strings.outputs.build-output-dir }}/_deps
+           ~/.cpm
           key: ${{ runner.os }}-${{ matrix.build_type }}-fetchcontent-${{ hashFiles('**/CMakeLists.txt', '**/*.cmake') }}
           restore-keys: |
             ${{ runner.os }}-${{ matrix.build_type }}-fetchcontent-

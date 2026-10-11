@@ -59,6 +59,7 @@ CPMAddPackage(
         NAME tinyobjloader
         GITHUB_REPOSITORY tinyobjloader/tinyobjloader
         GIT_TAG release
+        GIT_SHALLOW TRUE
 )
 
 CPMAddPackage(
@@ -66,6 +67,7 @@ CPMAddPackage(
         GITHUB_REPOSITORY bkaradzic/bgfx.cmake
         GIT_TAG v1.164.9539-583
         GIT_SHALLOW TRUE
+        GIT_SUBMODULES "bgfx" "bx" "bimg"
 )
 
 target_link_libraries(${PROJECT_NAME} PUBLIC SDL3::SDL3 bgfx tinyobjloader_c)

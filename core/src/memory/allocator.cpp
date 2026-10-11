@@ -4,175 +4,175 @@
 #include <utility>
 
 namespace Flock {
-    void *sys_alloc(usize size) {
-        return malloc(size);
+  void *sys_alloc(usize size) {
+    return malloc(size);
+  }
+
+  void *sys_realloc(void *allocation, usize size) {
+    return ::realloc(allocation, size);
+  }
+
+  void sys_free(void *allocation) {
+    ::free(allocation);
+  }
+
+  namespace {
+    struct AllocatorNode {
+      Allocator *    allocator = nullptr;
+      AllocatorNode *next      = nullptr;
+    };
+  }
+
+  static AllocatorNode *base = nullptr;
+
+  void Allocator::push_global(Allocator *allocator) {
+    void *ptr = sys_alloc(sizeof(AllocatorNode));
+    ASSERT(ptr, "Allocation failed");
+
+    auto *node      = (AllocatorNode *) ptr;
+    node->next      = base;
+    node->allocator = allocator;
+    base            = node;
+  }
+
+  void Allocator::pop_global() {
+    if (!base) {
+      return;
     }
 
-    void *sys_realloc(void *allocation, usize size) {
-        return ::realloc(allocation, size);
+    AllocatorNode *next = base->next;
+    sys_free(base);
+    base = next;
+  }
+
+  Allocator *Allocator::get_global() {
+    if (!base) {
+      return nullptr;
     }
 
-    void sys_free(void *allocation) {
-        ::free(allocation);
+    return base->allocator;
+  }
+
+  void *alloc(Allocator *allocator, usize size, usize align) {
+    if (!allocator) {
+      return sys_alloc(size);
     }
 
-    namespace {
-        struct AllocatorNode {
-            Allocator *    allocator = nullptr;
-            AllocatorNode *next      = nullptr;
-        };
+    return allocator->alloc(size, align);
+  }
+
+  void *realloc(Allocator *allocator, void *src, usize src_size, usize dest_size, usize align) {
+    if (!allocator) {
+      return sys_realloc(src, dest_size);
     }
 
-    static AllocatorNode *base = nullptr;
+    return allocator->realloc(src, src_size, dest_size, align);
+  }
 
-    void Allocator::push_global(Allocator *allocator) {
-        void *ptr = sys_alloc(sizeof(AllocatorNode));
-        ASSERT(ptr, "Allocation failed");
-
-        auto *node      = (AllocatorNode *)ptr;
-        node->next      = base;
-        node->allocator = allocator;
-        base            = node;
+  void free(Allocator *allocator, void *ptr, usize size) {
+    if (!allocator) {
+      return sys_free(ptr);
     }
 
-    void Allocator::pop_global() {
-        if (!base) {
-            return;
-        }
+    return allocator->free(ptr, size);
+  }
 
-        AllocatorNode *next = base->next;
-        sys_free(base);
-        base = next;
+  Maybe<BumpAllocator> BumpAllocator::create(usize size) {
+    void *allocation = sys_alloc(size);
+    if (!allocation) {
+      return {};
     }
 
-    Allocator *Allocator::get_global() {
-        if (!base) {
-            return nullptr;
-        }
+    BumpAllocator allocator = {};
+    allocator.ptr_          = (byte *) allocation;
+    allocator.size_         = size;
+    allocator.offset_       = 0;
 
-        return base->allocator;
+    return allocator;
+  }
+
+  BumpAllocator::BumpAllocator(BumpAllocator &&other) noexcept {
+    ptr_    = other.ptr_;
+    size_   = other.size_;
+    offset_ = other.offset_;
+
+    other.ptr_    = nullptr;
+    other.size_   = 0;
+    other.offset_ = 0;
+  }
+
+  BumpAllocator &BumpAllocator::operator=(BumpAllocator &&other) noexcept {
+    if (this == &other) {
+      return *this;
     }
 
-    void *alloc(Allocator *allocator, usize size, usize align) {
-        if (!allocator) {
-            return sys_alloc(size);
-        }
+    clear();
 
-        return allocator->alloc(size, align);
+    ptr_    = other.ptr_;
+    size_   = other.size_;
+    offset_ = other.offset_;
+
+    other.ptr_    = nullptr;
+    other.size_   = 0;
+    other.offset_ = 0;
+
+    return *this;
+  }
+
+  BumpAllocator::~BumpAllocator() {
+    clear();
+  }
+
+  void *BumpAllocator::alloc(usize size, usize align) {
+    ASSERT(ptr_, "Operation on an uninitialized object");
+
+    usize allocation_offset = align - (usize)(ptr_ + offset_) % align;
+    allocation_offset       = allocation_offset == align ? 0 : allocation_offset;
+
+    if (size_ < offset_ + allocation_offset + size) {
+      return nullptr;
     }
 
-    void *realloc(Allocator *allocator, void *src, usize src_size, usize dest_size, usize align) {
-        if (!allocator) {
-            return sys_realloc(src, dest_size);
-        }
+    void *ptr = ptr_ + offset_ + allocation_offset;
+    offset_   += allocation_offset + size;
 
-        return allocator->realloc(src, src_size, dest_size, align);
+    return ptr;
+  }
+
+  void *BumpAllocator::realloc(void *src, usize src_size, usize dest_size, usize align) {
+    ASSERT(ptr_, "Operation on an uninitialized object");
+
+    void *dest = alloc(dest_size, align);
+    if (!dest) {
+      return nullptr;
     }
 
-    void free(Allocator *allocator, void *ptr, usize size) {
-        if (!allocator) {
-            return sys_free(ptr);
-        }
+    const usize min_size = src_size < dest_size ? src_size : dest_size;
+    memcpy(dest, src, min_size);
 
-        return allocator->free(ptr, size);
+    return dest;
+  }
+
+  void BumpAllocator::free(void *ptr, usize size) {
+    ASSERT(ptr_, "Operation on an uninitialized object");
+    // No-op
+  }
+
+  void BumpAllocator::clear() {
+    if (ptr_) {
+      sys_free(ptr_);
     }
 
-    Maybe<BumpAllocator> BumpAllocator::create(usize size) {
-        void *allocation = sys_alloc(size);
-        if (!allocation) {
-            return {};
-        }
-
-        BumpAllocator allocator = {};
-        allocator.ptr_          = (byte *)allocation;
-        allocator.size_         = size;
-        allocator.offset_       = 0;
-
-        return allocator;
+    if (get_global() == this) {
+      pop_global();
     }
 
-    BumpAllocator::BumpAllocator(BumpAllocator &&other) noexcept {
-        ptr_    = other.ptr_;
-        size_   = other.size_;
-        offset_ = other.offset_;
+    ptr_    = nullptr;
+    size_   = 0;
+    offset_ = 0;
+  }
 
-        other.ptr_    = nullptr;
-        other.size_   = 0;
-        other.offset_ = 0;
-    }
-
-    BumpAllocator &BumpAllocator::operator=(BumpAllocator &&other) noexcept {
-        if (this == &other) {
-            return *this;
-        }
-
-        clear();
-
-        ptr_    = other.ptr_;
-        size_   = other.size_;
-        offset_ = other.offset_;
-
-        other.ptr_    = nullptr;
-        other.size_   = 0;
-        other.offset_ = 0;
-
-        return *this;
-    }
-
-    BumpAllocator::~BumpAllocator() {
-        clear();
-    }
-
-    void *BumpAllocator::alloc(usize size, usize align) {
-        ASSERT(ptr_, "Operation on an uninitialized object");
-
-        usize allocation_offset = align - (usize)(ptr_ + offset_) % align;
-        allocation_offset       = allocation_offset == align ? 0 : allocation_offset;
-
-        if (size_ < offset_ + allocation_offset + size) {
-            return nullptr;
-        }
-
-        void *ptr = ptr_ + offset_ + allocation_offset;
-        offset_   += allocation_offset + size;
-
-        return ptr;
-    }
-
-    void *BumpAllocator::realloc(void *src, usize src_size, usize dest_size, usize align) {
-        ASSERT(ptr_, "Operation on an uninitialized object");
-
-        void *dest = alloc(dest_size, align);
-        if (!dest) {
-            return nullptr;
-        }
-
-        const usize min_size = src_size < dest_size ? src_size : dest_size;
-        memcpy(dest, src, min_size);
-
-        return dest;
-    }
-
-    void BumpAllocator::free(void *ptr, usize size) {
-        ASSERT(ptr_, "Operation on an uninitialized object");
-        // No-op
-    }
-
-    void BumpAllocator::clear() {
-        if (ptr_) {
-            sys_free(ptr_);
-        }
-
-        if (get_global() == this) {
-            pop_global();
-        }
-
-        ptr_    = nullptr;
-        size_   = 0;
-        offset_ = 0;
-    }
-
-    void BumpAllocator::set_global() {
-        push_global(this);
-    }
+  void BumpAllocator::set_global() {
+    push_global(this);
+  }
 }

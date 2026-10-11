@@ -5,42 +5,42 @@
 #include "memory/ref.hpp"
 
 namespace Flock {
-    class FLK_API Event {
-    public:
-        virtual        ~Event() = default;
-        virtual TypeID get_type_id() = 0;
-    };
+  class FLK_API Event {
+  public:
+    virtual        ~Event() = default;
+    virtual TypeID get_type_id() = 0;
+  };
 
 #define EVENT(class) \
     Flock::TypeID get_type_id() override { return Flock::type_id<class>(); }
 
-    class FLK_API EventStack {
-        Vec<OwnedRef<Event>> events_ = {};
+  class FLK_API EventStack {
+    Vec<OwnedRef<Event>> events_ = {};
 
-    public:
-        static EventStack create();
+  public:
+    static EventStack create();
 
-        void            push(OwnedRef<Event> &&event);
-        OwnedRef<Event> pop();
+    void            push(OwnedRef<Event> &&event);
+    OwnedRef<Event> pop();
 
-        bool is_empty() const;
-    };
+    bool is_empty() const;
+  };
 
-    using EventCallback = void(*)(Event *event);
-    using CallbackID    = usize;
+  using EventCallback = void(*)(Event *event);
+  using CallbackID    = usize;
 
-    class FLK_API EventHandler {
-        EventStack            event_stack_    = {};
-        Vec<EventCallback> callbacks_      = {};
-        Vec<CallbackID>    dead_callbacks_ = {};
+  class FLK_API EventHandler {
+    EventStack         event_stack_    = {};
+    Vec<EventCallback> callbacks_      = {};
+    Vec<CallbackID>    dead_callbacks_ = {};
 
-    public:
-        void push(OwnedRef<Event> &&event);
-        void dispatch(OwnedRef<Event> &&event);
+  public:
+    void push(OwnedRef<Event> &&event);
+    void dispatch(OwnedRef<Event> &&event);
 
-        CallbackID subscribe(EventCallback callback);
-        void       unsubscribe(CallbackID callback_id);
+    CallbackID subscribe(EventCallback callback);
+    void       unsubscribe(CallbackID callback_id);
 
-        void handle_events();
-    };
+    void handle_events();
+  };
 }
