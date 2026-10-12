@@ -3,7 +3,7 @@
 #include <cstring>
 
 namespace Flock {
-  StringSlice StringSlice::create(const char *ptr, usize len) {
+  StringSlice StringSlice::create(const char *ptr, const usize len) {
     StringSlice slice{};
     slice.ptr_ = ptr;
     slice.len_ = len;
@@ -25,7 +25,7 @@ namespace Flock {
     return len_ == 0;
   }
 
-  const char *StringSlice::get(usize idx) const {
+  const char *StringSlice::get(const usize idx) const {
     if (idx >= len_) {
       return nullptr;
     }
@@ -74,26 +74,26 @@ namespace Flock {
   }
 
   const char *StringSlice::begin() const {
-    return first();
+    return ptr_;
   }
 
   const char *StringSlice::end() const {
-    return last() + 1;
+    return ptr_ + len_;
   }
 
-  String String::create() {
+  String String::empty() {
     String string{};
-    string.chars_ = Vec<char>::create();
+    string.chars_ = Vec<char>::empty();
     return string;
   }
 
-  String String::with_cap(usize cap) {
+  String String::with_cap(const usize cap) {
     String string{};
     string.chars_ = Vec<char>::with_cap(cap);
     return string;
   }
 
-  String String::with_len(usize len) {
+  String String::with_len(const usize len) {
     String string{};
     string.chars_ = Vec<char>::with_len(len, ' ');
     return string;
@@ -116,11 +116,11 @@ namespace Flock {
     chars_.release();
   }
 
-  void String::reserve(usize cap) {
+  void String::reserve(const usize cap) {
     return chars_.reserve(cap);
   }
 
-  void String::shrink_to(usize cap) {
+  void String::shrink_to(const usize cap) {
     return chars_.shrink_to(cap);
   }
 
@@ -128,12 +128,12 @@ namespace Flock {
     return chars_.shrink_to_fit();
   }
 
-  String &String::resize(usize len, char fill) {
+  String &String::resize(const usize len, const char fill) {
     chars_.resize(len, fill);
     return *this;
   }
 
-  void String::fill(char fill) {
+  void String::fill(const char fill) {
     return chars_.fill(fill);
   }
 
@@ -153,11 +153,11 @@ namespace Flock {
     return chars_.is_empty();
   }
 
-  char *String::get(usize idx) {
+  char *String::get(const usize idx) {
     return chars_.get(idx);
   }
 
-  char &String::operator[](usize idx) {
+  char &String::operator[](const usize idx) {
     return chars_[idx];
   }
 
@@ -210,8 +210,87 @@ namespace Flock {
     return chars_.swap_remove(idx);
   }
 
-  StringSlice String::as_slice() {
+  usize String::reverse_find_n(const char c, const usize n) const {
+    return chars_.reverse_find_n(c, n);
+  }
+
+  usize String::find_n(const char c, const usize n) const {
+    return chars_.find_n(c, n);
+  }
+
+  usize String::find(const char c) const {
+    return chars_.find(c);
+  }
+
+  usize String::find_last(const char c) const {
+    return chars_.find_last(c);
+  }
+
+  usize String::reverse_find_n(const StringSlice string, usize n) const {
+    for (usize i = len() - string.len(); i != static_cast<usize>(0) - 1; i--) {
+      StringSlice slice = substring(i, string.len());
+      if (slice == string && n != 0) {
+        n--;
+      }
+
+      if (slice == string && n == 0) {
+        return i;
+      }
+    }
+
+    return NULL_POS;
+  }
+
+  usize String::find_n(const StringSlice string, usize n) const {
+    for (usize i = 0; i <= len() - string.len(); i++) {
+      StringSlice slice = substring(i, string.len());
+      if (slice == string && n != 0) {
+        n--;
+      }
+
+      if (slice == string && n == 0) {
+        return i;
+      }
+    }
+
+    return NULL_POS;
+  }
+
+  usize String::find(const StringSlice string) const {
+    return find_n(string, 0);
+  }
+
+  usize String::find_last(const StringSlice string) const {
+    return reverse_find_n(string, 0);
+  }
+
+  void String::replace_n(const char c, const char replace, const usize n) {
+    chars_.replace_n(c, replace, n);
+  }
+
+  void String::reverse_replace_n(const char c, const char replace, const usize n) {
+    chars_.reverse_replace_n(c, replace, n);
+  }
+
+  void String::replace(const char c, const char replace) {
+    chars_.replace(c, replace);
+  }
+
+  void String::replace_last(const char c, const char replace) {
+    chars_.replace_last(c, replace);
+  }
+
+  void String::replace_all(const char c, const char replace) {
+    chars_.replace_all(c, replace);
+  }
+
+  StringSlice String::as_slice() const {
     return StringSlice::create(chars_.first(), chars_.len());
+  }
+
+  StringSlice String::substring(const usize first, const usize len) const {
+    ASSERT(first + len <= chars_.len(), "Out of bounds access");
+    return StringSlice::create(chars_.first() + first, len);
   }
 
   bool String::operator==(const String &other) const {

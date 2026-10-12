@@ -34,6 +34,10 @@ add_library(
         include/math/color.hpp
         include/asset/asset.hpp
         src/asset/asset.cpp
+        include/file/file.hpp
+        src/file/file.cpp
+        include/file/path.hpp
+        src/file/path.cpp
 )
 
 target_include_directories(${PROJECT_NAME} PUBLIC ${PROJECT_SOURCE_DIR}/src ${PROJECT_SOURCE_DIR}/include)

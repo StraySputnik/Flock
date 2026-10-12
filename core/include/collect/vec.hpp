@@ -8,6 +8,7 @@
 namespace Flock {
   static constexpr usize VECTOR_INIT_LENGTH = 8;
   static constexpr f32   VECTOR_GROW_FACTOR = 1.4f;
+  static constexpr usize NULL_POS           = INVALID;
 
   template<typename T>
   class Vec {
@@ -17,7 +18,7 @@ namespace Flock {
     usize      cap_       = 0;
 
   public:
-    static Vec create() {
+    static Vec empty() {
       Vec vector        = {};
       vector.allocator_ = Allocator::get_global();
       vector.len_       = 0;
@@ -66,7 +67,7 @@ namespace Flock {
       ASSERT(ptr_, "Allocation failed");
 
       for (usize i = 0; i < len_; i++) {
-        new (ptr_ + i) T(other[i]);
+        new(ptr_ + i) T(other[i]);
       }
     }
 
@@ -359,12 +360,90 @@ namespace Flock {
       return val;
     }
 
+    usize reverse_find_n(const T &value, usize n) const {
+      for (usize i = len_ - 1; i != static_cast<usize>(0) - 1; i--) {
+        if (ptr_[i] == value && n != 0) {
+          n--;
+        }
+
+        if (ptr_[i] == value && n == 0) {
+          return i;
+        }
+      }
+
+      return NULL_POS;
+    }
+
+    usize find_n(const T &value, usize n) const {
+      for (usize i = 0; i < len_; i++) {
+        if (ptr_[i] == value && n != 0) {
+          n--;
+        }
+
+        if (ptr_[i] == value && n == 0) {
+          return i;
+        }
+      }
+
+      return NULL_POS;
+    }
+
+    usize find(const T &value) const {
+      return find_n(value, 0);
+    }
+
+    usize find_last(const T &value) const {
+      return reverse_find_n(value, 0);
+    }
+
+    void replace_n(const T &value, const T &replace, usize n) {
+      while (n != 0) {
+        usize i = find(value);
+        if (i == NULL_POS) {
+          break;
+        }
+
+        ptr_[i] = replace;
+        n--;
+      }
+    }
+
+    void reverse_replace_n(const T &value, const T &replace, usize n) {
+      while (n != 0) {
+        usize i = find(value);
+        if (i == NULL_POS) {
+          break;
+        }
+
+        ptr_[i] = replace;
+        n--;
+      }
+    }
+
+    void replace(const T &value, const T &replace) {
+      return replace_n(value, replace, 1);
+    }
+
+    void replace_last(const T &value, const T &replace) {
+      return reverse_replace_n(value, replace, 1);
+    }
+
+    void replace_all(const T &value, const T &replace) {
+      usize i = find_n(value, 0);
+      usize n = 1;
+      while (i != NULL_POS) {
+        ptr_[i] = replace;
+        i       = find_n(value, n);
+        n++;
+      }
+    }
+
     T *begin() {
-      return first();
+      return ptr_;
     }
 
     T *end() {
-      return last() + 1;
+      return ptr_ + len_;
     }
 
     bool operator==(const Vec &other) const {
@@ -386,11 +465,11 @@ namespace Flock {
     }
 
     const T *begin() const {
-      return first();
+      return ptr_;
     }
 
     const T *end() const {
-      return last() + 1;
+      return ptr_ + len_;
     }
   };
 }

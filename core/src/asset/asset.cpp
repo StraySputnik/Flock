@@ -6,7 +6,7 @@
 #include <tiny_obj_c.h>
 
 namespace Flock::Asset {
-  static Maybe<Mesh> load_obj(StringSlice filepath) {
+  static Maybe<MeshData> load_obj(StringSlice filepath) {
     tobj_scene_f           scene;
     const tobj_load_config cfg  = tobj_default_config(); // triangulate = true
     tobj_diag              diag = {.on_message = nullptr};
@@ -19,7 +19,7 @@ namespace Flock::Asset {
       return {};
     }
 
-    Mesh result{};
+    MeshData result{};
 
     const tobj_mesh_f *mesh = &scene.shapes[0].mesh;
     for (size_t i = 0; i < mesh->num_indices; i++) {
@@ -41,9 +41,9 @@ namespace Flock::Asset {
     return result;
   }
 
-  Maybe<AssetHandle<Mesh>> AssetLoader::load_mesh(StringSlice filepath) {
-    auto        asset      = asset_path<Mesh>(filepath);
-    Maybe<Mesh> maybe_mesh = load_obj(filepath);
+  Maybe<Mesh> AssetLoader::load_mesh(const StringSlice filepath) {
+    auto            asset      = asset_path<MeshData>(filepath);
+    Maybe<MeshData> maybe_mesh = load_obj(filepath);
     if (!maybe_mesh) {
       return {};
     }
@@ -52,8 +52,8 @@ namespace Flock::Asset {
     return asset;
   }
 
-  Maybe<AssetHandle<Image>> AssetLoader::load_image(StringSlice filepath) {
-    auto asset = asset_path<Image>(filepath);
+  Maybe<Image> AssetLoader::load_image(StringSlice filepath) {
+    auto asset = asset_path<ImageData>(filepath);
 
     return asset;
   }

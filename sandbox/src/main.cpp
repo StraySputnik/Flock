@@ -1,5 +1,8 @@
+#include <dirent.h>
+
 #include "app.hpp"
 #include "common.hpp"
+#include "file/file.hpp"
 #include "math/matrix.hpp"
 #include "math/vector.hpp"
 #include "math/quaternion.hpp"

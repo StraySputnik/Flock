@@ -46,7 +46,7 @@ namespace Flock::ECS {
 
       sparse_[id]                   = groups_.len();
       void *ptr                     = new Group<T>{};
-      *static_cast<Group<T> *>(ptr) = Group<T>::create();
+      *static_cast<Group<T> *>(ptr) = Group<T>::empty();
 
       groups_.push(ptr);
       interfaces_.push({
