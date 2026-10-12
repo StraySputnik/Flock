@@ -1,5 +1,7 @@
 #pragma once
 
+#include <type_traits>
+
 #include "common.hpp"
 #include "memory/allocator.hpp"
 
@@ -55,7 +57,7 @@ namespace Flock {
 
     Vec() = default;
 
-    Vec(const Vec &other) {
+    Vec(const Vec &other) requires std::is_copy_constructible_v<T> {
       allocator_ = Allocator::get_global();
       len_       = other.len_;
       cap_       = other.cap_;
@@ -64,7 +66,7 @@ namespace Flock {
       ASSERT(ptr_, "Allocation failed");
 
       for (usize i = 0; i < len_; i++) {
-        ptr_[i] = other[i];
+        new (ptr_ + i) T(other[i]);
       }
     }
 
@@ -80,7 +82,7 @@ namespace Flock {
       other.ptr_       = nullptr;
     }
 
-    Vec &operator=(const Vec &other) {
+    Vec &operator=(const Vec &other) requires std::is_copy_assignable_v<T> {
       if (this == &other) {
         return *this;
       }
@@ -211,7 +213,7 @@ namespace Flock {
       return *this;
     }
 
-    Vec &resize(usize len, const T &fill) {
+    Vec &resize(const usize len, const T &fill) {
       if (len > len_) {
         if (len > cap_) {
           reserve(len);
@@ -230,7 +232,7 @@ namespace Flock {
       return *this;
     }
 
-    Vec &resize(usize len, T &&fill) {
+    Vec &resize(const usize len, T &&fill) {
       if (len > len_) {
         if (len > cap_) {
           reserve(len);

@@ -1,7 +1,6 @@
 cmake_minimum_required(VERSION 3.31)
 project(flock)
 
-set(CPM_SOURCE_CACHE "$ENV{HOME}/.cpm")
 include(cmake/CPM.cmake)
 
 set(CMAKE_CXX_STANDARD 23)

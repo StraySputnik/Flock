@@ -13,6 +13,18 @@ namespace Flock {
     Allocator *allocator_ = nullptr;
 
   public:
+    template<typename U>
+    static OwnedRef from_derived(const U &derived) {
+      static_assert(std::is_base_of_v<T, U>, "U must derive from T");
+
+      OwnedRef ref{};
+      ref.allocator_ = Allocator::get_global();
+      void *mem      = alloc(ref.allocator_, sizeof(U), alignof(U));
+      ASSERT(mem, "Allocation failed");
+      ref.ptr_ = new(mem) U(derived);
+      return ref;
+    }
+
     static OwnedRef from_value(const T &value) {
       OwnedRef ref{};
       ref.allocator_ = Allocator::get_global();

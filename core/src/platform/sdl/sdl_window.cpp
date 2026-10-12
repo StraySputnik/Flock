@@ -150,10 +150,10 @@ namespace Flock::SDL {
   }
 
   Vec<OwnedRef<Event>> Window::consume_events(Vec<OwnedRef<Event>> &events) {
-    Vec<OwnedRef<Event>> new_stack = Vec<OwnedRef<Event>>::create();
+    Vec<OwnedRef<Event>> new_stack = {};
     while (!events.is_empty()) {
       OwnedRef<Event> event = events.pop();
-      const auto *window_event = dynamic_cast<WindowEvent *>(event.get());
+      const auto *window_event = static_cast<WindowEvent *>(event.get());
       if (window_event->get_window_id() == get_id()) {
         events_.push(std::move(event));
         if (event->get_type_id() == type_id<WindowClosedEvent>()) {
