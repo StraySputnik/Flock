@@ -2,103 +2,241 @@
 
 #include "allocator.hpp"
 #include "common.hpp"
+#include "collect/map.hpp"
 
 namespace Flock {
-    class Allocator;
+  class Allocator;
 
-    template <typename T>
-    class OwnedRef {
-        T *        ptr_       = nullptr;
-        Allocator *allocator_ = nullptr;
+  template<typename T>
+  class OwnedRef {
+    T *        ptr_       = nullptr;
+    Allocator *allocator_ = nullptr;
 
-    public:
-        static OwnedRef from_value(const T &value) {
-            OwnedRef ref{};
-            ref.allocator_ = Allocator::get_global();
-            ref.ptr_       = static_cast<T *>(alloc(ref.allocator_, sizeof(T), alignof(T)));
-            ASSERT(ref.ptr_, "Allocation failed");
-            *ref.ptr_ = value;
-            return ref;
-        }
+  public:
+    template<typename U>
+    static OwnedRef from_derived(const U &derived) {
+      static_assert(std::is_base_of_v<T, U>, "U must derive from T");
 
-        static OwnedRef from_ptr(T *ptr, Allocator *allocator = nullptr) {
-            ASSERT(ptr, "Invalid pointer");
-            OwnedRef ref{};
-            ref.allocator_ = allocator;
-            ref.ptr_       = ptr;
-            return ref;
-        }
+      OwnedRef ref{};
+      ref.allocator_ = Allocator::get_global();
+      void *mem      = alloc(ref.allocator_, sizeof(U), alignof(U));
+      ASSERT(mem, "Allocation failed");
+      ref.ptr_ = new(mem) U(derived);
+      return ref;
+    }
 
-        OwnedRef() = default;
+    static OwnedRef from_value(const T &value) {
+      OwnedRef ref{};
+      ref.allocator_ = Allocator::get_global();
+      ref.ptr_       = static_cast<T *>(alloc(ref.allocator_, sizeof(T), alignof(T)));
+      ASSERT(ref.ptr_, "Allocation failed");
+      *ref.ptr_ = value;
+      return ref;
+    }
 
-        OwnedRef(const OwnedRef &) = delete;
+    static OwnedRef from_ptr(T *ptr, Allocator *allocator = nullptr) {
+      ASSERT(ptr, "Invalid pointer");
+      OwnedRef ref{};
+      ref.allocator_ = allocator;
+      ref.ptr_       = ptr;
+      return ref;
+    }
 
-        OwnedRef(OwnedRef &&other) noexcept {
-            ptr_             = other.ptr_;
-            allocator_       = other.allocator_;
-            other.ptr_       = nullptr;
-            other.allocator_ = nullptr;
-        }
+    OwnedRef() = default;
 
-        OwnedRef &operator=(const OwnedRef &) = delete;
+    OwnedRef(const OwnedRef &) = delete;
 
-        OwnedRef &operator=(OwnedRef &&other) noexcept {
-            if (this == &other) {
-                return *this;
-            }
+    OwnedRef(OwnedRef &&other) noexcept {
+      ptr_             = other.ptr_;
+      allocator_       = other.allocator_;
+      other.ptr_       = nullptr;
+      other.allocator_ = nullptr;
+    }
 
-            free();
+    OwnedRef &operator=(const OwnedRef &) = delete;
 
-            ptr_             = other.ptr_;
-            allocator_       = other.allocator_;
-            other.ptr_       = nullptr;
-            other.allocator_ = nullptr;
+    OwnedRef &operator=(OwnedRef &&other) noexcept {
+      if (this == &other) {
+        return *this;
+      }
 
-            return *this;
-        }
+      release();
 
-        ~OwnedRef() {
-            free();
-        }
+      ptr_             = other.ptr_;
+      allocator_       = other.allocator_;
+      other.ptr_       = nullptr;
+      other.allocator_ = nullptr;
 
-        void free() {
-            if (!ptr_) {
-                return;
-            }
+      return *this;
+    }
 
-            ptr_->~T();
-        }
+    ~OwnedRef() {
+      release();
+    }
 
-        T *get() {
-            return ptr_;
-        }
+    void release() {
+      if (!ptr_) {
+        return;
+      }
 
-        const T *get() const {
-            return ptr_;
-        }
+      ptr_->~T();
+      allocator_->release(ptr_, sizeof(T));
+      ptr_ = nullptr;
+    }
 
-        T *operator ->() {
-            ASSERT(ptr_, "Deref on invalid OwnedRef");
-            return ptr_;
-        }
+    T *get() {
+      return ptr_;
+    }
 
-        const T *operator ->() const {
-            ASSERT(ptr_, "Deref on invalid OwnedRef");
-            return ptr_;
-        }
+    const T *get() const {
+      return ptr_;
+    }
 
-        T &operator *() {
-            ASSERT(ptr_, "Deref on invalid OwnedRef");
-            return ptr_;
-        }
+    T *operator ->() {
+      ASSERT(ptr_, "Deref on invalid OwnedRef");
+      return ptr_;
+    }
 
-        const T &operator*() const {
-            ASSERT(ptr_, "Deref on invalid OwnedRef");
-            return ptr_;
-        }
+    const T *operator ->() const {
+      ASSERT(ptr_, "Deref on invalid OwnedRef");
+      return ptr_;
+    }
 
-        operator bool() const {
-            return ptr_;
-        }
+    T *operator *() {
+      ASSERT(ptr_, "Deref on invalid OwnedRef");
+      return ptr_;
+    }
+
+    const T *operator*() const {
+      ASSERT(ptr_, "Deref on invalid OwnedRef");
+      return ptr_;
+    }
+
+    operator bool() const {
+      return ptr_;
+    }
+  };
+
+  // Not atomic
+  template<typename T>
+  class SharedRef {
+    inline static Map<T *, usize> ref_counts_ = {};
+
+    T *        ptr_       = nullptr;
+    Allocator *allocator_ = nullptr;
+
+  public:
+    static SharedRef from_value(const T &value) {
+      SharedRef ref{};
+      ref.allocator_ = Allocator::get_global();
+      ref.ptr_       = static_cast<T *>(alloc(ref.allocator_, sizeof(T), alignof(T)));
+      ASSERT(ref.ptr_, "Allocation failed");
+      *ref.ptr_ = value;
+
+      ++ref_counts_[ref.ptr_];
+      return ref;
+    }
+
+    static SharedRef from_ptr(T *ptr, Allocator *allocator = nullptr) {
+      ASSERT(ptr, "Invalid pointer");
+      SharedRef ref{};
+      ref.allocator_ = allocator;
+      ref.ptr_       = ptr;
+      ++ref_counts_[ref.ptr_];
+      return ref;
+    }
+
+    SharedRef() = default;
+
+    SharedRef(const SharedRef &other) {
+      ptr_       = other.ptr_;
+      allocator_ = other.allocator_;
+
+      ++ref_counts_[ptr_];
     };
+
+    SharedRef(SharedRef &&other) noexcept {
+      ptr_             = other.ptr_;
+      allocator_       = other.allocator_;
+      other.ptr_       = nullptr;
+      other.allocator_ = nullptr;
+    }
+
+    SharedRef &operator=(const SharedRef &other) {
+      if (this == &other) {
+        return *this;
+      }
+
+      release();
+
+      ptr_       = other.ptr_;
+      allocator_ = other.allocator_;
+      ref_counts_[ptr_]++;
+
+      return *this;
+    }
+
+    SharedRef &operator=(SharedRef &&other) noexcept {
+      if (this == &other) {
+        return *this;
+      }
+
+      release();
+
+      ptr_             = other.ptr_;
+      allocator_       = other.allocator_;
+      other.ptr_       = nullptr;
+      other.allocator_ = nullptr;
+
+      return *this;
+    }
+
+    ~SharedRef() {
+      release();
+    }
+
+    void release() {
+      if (!ptr_) {
+        return;
+      }
+
+      ref_counts_[ptr_]--;
+      if (ref_counts_[ptr_] == 0) {
+        ptr_->~T();
+        allocator_->release(ptr_, sizeof(T));
+      }
+    }
+
+    T *get() {
+      return ptr_;
+    }
+
+    const T *get() const {
+      return ptr_;
+    }
+
+    T *operator ->() {
+      ASSERT(ptr_, "Deref on invalid OwnedRef");
+      return ptr_;
+    }
+
+    const T *operator ->() const {
+      ASSERT(ptr_, "Deref on invalid OwnedRef");
+      return ptr_;
+    }
+
+    T *operator *() {
+      ASSERT(ptr_, "Deref on invalid OwnedRef");
+      return ptr_;
+    }
+
+    const T *operator*() const {
+      ASSERT(ptr_, "Deref on invalid OwnedRef");
+      return ptr_;
+    }
+
+    operator bool() const {
+      return ptr_;
+    }
+  };
 }

@@ -1,4 +1,4 @@
-project(flock_sandbox)
+project(flock_sandbox CXX)
 
 add_executable(
         ${PROJECT_NAME}

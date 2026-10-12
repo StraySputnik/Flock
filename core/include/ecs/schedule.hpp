@@ -5,31 +5,31 @@
 #include "collect/map.hpp"
 
 namespace Flock::ECS {
-    class World;
+  class World;
 
-    using System    = void (*)(const World &world);
-    using MutSystem = void (*)(World &world);
+  using System    = void (*)(const World &world);
+  using MutSystem = void (*)(World &world);
 
-    enum class Stage : u8 {
-        Start,
-        Update,
-    };
+  enum class Stage : u8 {
+    Start,
+    Update,
+  };
 
-    class FLK_API Schedule {
-        Map<Stage, Vec<System>>    systems_     = {};
-        Map<Stage, Vec<MutSystem>> mut_systems_ = {};
+  class FLK_API Schedule {
+    Map<Stage, Vec<System>>    systems_     = {};
+    Map<Stage, Vec<MutSystem>> mut_systems_ = {};
 
-    public:
-        static Schedule create();
+  public:
+    static Schedule create();
 
-        template <typename... Args>
-        void add_systems(Args... systems) {
-            (add_system(systems), ...);
-        }
+    template<typename... Args>
+    void add_systems(Stage stage, Args... systems) {
+      (add_system(stage, systems), ...);
+    }
 
-        Schedule &add_system(Stage stage, const System &system);
-        Schedule &add_system(Stage stage, const MutSystem &system);
+    Schedule &add_system(Stage stage, const System &system);
+    Schedule &add_system(Stage stage, const MutSystem &system);
 
-        void execute(Stage stage, World &world);
-    };
+    void execute(Stage stage, World &world);
+  };
 }
