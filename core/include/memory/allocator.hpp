@@ -8,7 +8,7 @@ namespace Flock {
   void *sys_realloc(void *allocation, usize size);
   void  sys_free(void *allocation);
 
-  class Allocator {
+  class FLK_API Allocator {
   public:
     static void       push_global(Allocator *allocator);
     static void       pop_global();
@@ -26,7 +26,7 @@ namespace Flock {
   void *realloc(Allocator *allocator, void *src, usize src_size, usize dest_size, usize align = alignof(usize));
   void  release(Allocator *allocator, void *ptr, usize size);
 
-  class BumpAllocator : public Allocator {
+  class FLK_API BumpAllocator : public Allocator {
     byte *ptr_    = nullptr;
     usize size_   = 0;
     usize offset_ = 0;

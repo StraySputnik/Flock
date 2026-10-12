@@ -263,19 +263,19 @@ namespace Flock {
       }
     }
 
-    usize len() const {
+    [[nodiscard]] usize len() const {
       return len_;
     }
 
-    usize cap() const {
+    [[nodiscard]] usize cap() const {
       return cap_;
     }
 
-    Allocator *allocator() const {
+    [[nodiscard]] Allocator *allocator() const {
       return allocator_;
     }
 
-    bool is_empty() const {
+    [[nodiscard]] bool is_empty() const {
       return len_ == 0;
     }
 
