@@ -1,23 +1,15 @@
-#include <dirent.h>
-
 #include "app.hpp"
 #include "common.hpp"
-#include "file/file.hpp"
-#include "math/matrix.hpp"
-#include "math/vector.hpp"
-#include "math/quaternion.hpp"
+#include "asset/asset.hpp"
 
 using namespace Flock;
 
 i32 main() {
-  //BumpAllocator allocator = BumpAllocator::create(65'536).move();
-  //allocator.set_global();
-  //
-  //App::create().run();
+  BumpAllocator allocator = BumpAllocator::create(4096).move();
 
-  auto       vec  = Vector3f::xyz(2, 1, 1);
-  const auto quat = Quaternion::euler(180, 0, 0) * Quaternion::euler(0, 180, 0);
+  AssetLoader       loader   = AssetLoader::create("../../assets/").move();
 
-  vec *= quat;
-  ASSERT(Vector3f::distance(vec, Vector3f::xyz(-2, -1, 1)) < Math::EPSILON_32, "");
+  loader.set_allocator(AssetType::Mesh, &allocator);
+  AssetHandle<Mesh> mesh     = AssetHandle<Mesh>::from_path("mesh.obj");
+  Vec<Vector3f>     vertices = loader.resolve(mesh)->vertices;
 }

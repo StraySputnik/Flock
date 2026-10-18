@@ -3,6 +3,22 @@
 #include <cstring>
 
 namespace Flock {
+  char to_lowercase(const char ch) {
+    if (ch >= 'A' && ch <= 'Z') {
+      return static_cast<char>(static_cast<i32>(ch) + 'a' - 'A');
+    }
+
+    return ch;
+  }
+
+  char to_uppercase(const char ch) {
+    if (ch >= 'a' && ch <= 'z') {
+      return static_cast<char>(static_cast<i32>(ch) + 'A' - 'z');
+    }
+
+    return ch;
+  }
+
   StringSlice StringSlice::create(const char *ptr, const usize len) {
     StringSlice slice{};
     slice.ptr_ = ptr;
@@ -33,8 +49,8 @@ namespace Flock {
     return ptr_ + idx;
   }
 
-  const char &StringSlice::operator[](usize idx) const {
-    ASSERT(idx >= len_, "Out of bounds access");
+  const char &StringSlice::operator[](const usize idx) const {
+    ASSERT(idx < len_, "Out of bounds access");
     return ptr_[idx];
   }
 
@@ -47,7 +63,7 @@ namespace Flock {
   }
 
   String StringSlice::to_string() const {
-    auto str = String::with_cap(len_);
+    auto str = String::with_capacity(len_);
     for (const auto c: *this) {
       str.push(c);
     }
@@ -83,19 +99,15 @@ namespace Flock {
 
   String String::empty() {
     String string{};
-    string.chars_ = Vec<char>::empty();
+    string.chars_ = Vec<char>::with_capacity(1);
+    string.chars_.push('\0');
     return string;
   }
 
-  String String::with_cap(const usize cap) {
+  String String::with_capacity(const usize capacity) {
     String string{};
-    string.chars_ = Vec<char>::with_cap(cap);
-    return string;
-  }
-
-  String String::with_len(const usize len) {
-    String string{};
-    string.chars_ = Vec<char>::with_len(len, ' ');
+    string.chars_ = Vec<char>::with_capacity(capacity + 1);
+    string.chars_.push('\0');
     return string;
   }
 
@@ -103,11 +115,12 @@ namespace Flock {
     const usize len = strlen(c_str);
 
     String string{};
-    string.chars_ = Vec<char>::with_cap(len);
+    string.chars_ = Vec<char>::with_capacity(len + 1);
 
     for (usize i = 0; i < len; i++) {
       string.chars_.push(c_str[i]);
     }
+    string.chars_.push('\0');
 
     return string;
   }
@@ -116,33 +129,28 @@ namespace Flock {
     chars_.release();
   }
 
-  void String::reserve(const usize cap) {
-    return chars_.reserve(cap);
+  void String::reserve(const usize capacity) {
+    return chars_.reserve(capacity);
   }
 
-  void String::shrink_to(const usize cap) {
-    return chars_.shrink_to(cap);
+  void String::reserve_exact(const usize capacity) {
+    return chars_.reserve_exact(capacity);
+  }
+
+  void String::shrink_to(const usize min_capacity) {
+    return chars_.shrink_to(min_capacity + 1);
   }
 
   void String::shrink_to_fit() {
     return chars_.shrink_to_fit();
   }
 
-  String &String::resize(const usize len, const char fill) {
-    chars_.resize(len, fill);
-    return *this;
-  }
-
-  void String::fill(const char fill) {
-    return chars_.fill(fill);
-  }
-
   usize String::len() const {
-    return chars_.len();
+    return chars_.len() - 1;
   }
 
-  usize String::cap() const {
-    return chars_.cap();
+  usize String::capacity() const {
+    return chars_.capacity() - 1;
   }
 
   Allocator *String::allocator() const {
@@ -150,147 +158,328 @@ namespace Flock {
   }
 
   bool String::is_empty() const {
-    return chars_.is_empty();
+    return len() == 0;
+  }
+
+  char *String::ptr() {
+    return chars_.ptr();
+  }
+
+  const char *String::ptr() const {
+    return chars_.ptr();
+  }
+
+  const char *String::c_str() const {
+    return chars_.ptr();
   }
 
   char *String::get(const usize idx) {
+    ASSERT(idx < len(), "Out of bounds access");
     return chars_.get(idx);
   }
 
   char &String::operator[](const usize idx) {
+    ASSERT(idx < len(), "Out of bounds access");
     return chars_[idx];
   }
 
   char *String::first() {
-    return chars_.first();
+    return is_empty() ? nullptr : chars_.first();
   }
 
   char *String::last() {
-    return chars_.last();
+    return is_empty() ? nullptr : chars_.get(len() - 1);
   }
 
-  const char *String::get(usize idx) const {
+  const char *String::get(const usize idx) const {
+    ASSERT(idx < len(), "Out of bounds access");
     return chars_.get(idx);
   }
 
-  const char &String::operator[](usize idx) const {
+  const char &String::operator[](const usize idx) const {
+    ASSERT(idx < len(), "Out of bounds access");
     return chars_[idx];
   }
 
   const char *String::first() const {
-    return chars_.first();
+    return is_empty() ? nullptr : chars_.first();
   }
 
   const char *String::last() const {
-    return chars_.last();
+    return is_empty() ? nullptr : chars_.get(len() - 1);
   }
 
-  String &String::push(char element) {
-    chars_.push(element);
+  bool String::contains(const char ch) const {\
+    for (usize i = 0; i < len(); i++) {
+      if (chars_[i] == ch) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  void String::push(const char element) {
+    if (chars_.is_empty()) {
+      chars_.push('\0');
+    }
+
+    chars_[chars_.len() - 1] = element;
+    chars_.push('\0');
+  }
+
+  void String::push_str(const StringSlice str) {
+    chars_.reserve(str.len());
+    for (usize i = 0; i < str.len(); i++) {
+      push(str[i]);
+    }
+  }
+
+  void String::push_str(const char *c_str) {
+    return push_str(StringSlice::create(c_str, strlen(c_str)));
+  }
+
+  void String::insert(const usize idx, const char ch) {
+    ASSERT(idx <= len(), "Out of bounds access");
+    chars_.insert(idx, ch);
+  }
+
+  void String::insert_str(const usize idx, const StringSlice str) {
+    ASSERT(idx <= len(), "Out of bounds access");
+
+    const usize n       = str.len();
+    const usize old_len = len();
+
+    chars_.reserve(n);
+    chars_.resize(chars_.len() + n, '\0');
+    for (usize i = old_len + 1; i > idx; i--) {
+      chars_[i - 1 + n] = chars_[i - 1];
+    }
+
+    for (usize i = 0; i < n; i++) {
+      chars_[idx + i] = str[i];
+    }
+  }
+
+  void String::insert_str(const usize idx, const char *c_str) {
+    return insert_str(idx, StringSlice::create(c_str, strlen(c_str)));
+  }
+
+  Maybe<char> String::pop() {
+    chars_.pop();
+    const Maybe<char> result = chars_.pop();
+    chars_.push('\0');
+    return result;
+  }
+
+  char String::remove(const usize idx) {
+    ASSERT(idx < len(), "Out of bounds access");
+    return chars_.remove(idx);
+  }
+
+  char String::swap_remove(const usize idx) {
+    ASSERT(idx < len(), "Out of bounds access");
+    chars_.swap(idx, len() - 1);
+    return chars_.remove(len() - 1);
+  }
+
+  void String::grow(const usize new_len, const char value) {
+    if (new_len > len()) {
+      resize(new_len, value);
+    }
+  }
+
+  void String::truncate(const usize new_len) {
+    if (new_len >= len()) {
+      return;
+    }
+    chars_.truncate(new_len + 1);
+    chars_[new_len] = '\0';
+  }
+
+  void String::resize(const usize new_len, const char value) {
+    chars_.pop();
+    chars_.resize(new_len, value);
+    chars_.push('\0');
+  }
+
+  void String::swap(const usize a, const usize b) {
+    ASSERT(a < len() && b < len(), "Out of bounds access");
+    return chars_.swap(a, b);
+  }
+
+  void String::reverse() {
+    chars_.pop();
+    chars_.reverse();
+    chars_.push('\0');
+  }
+
+  void String::sort() {
+    chars_.pop();
+    chars_.sort();
+    chars_.push('\0');
+  }
+
+  void String::fill(const char value) {
+    chars_.pop();
+    chars_.fill(value);
+    chars_.push('\0');
+  }
+
+  String String::to_lowercase() const {
+    String str = *this;
+    return str.make_lowercase();
+  }
+
+  String String::to_uppercase() const {
+    String str = *this;
+    return str.make_uppercase();
+  }
+
+  String &String::make_lowercase() {
+    for (usize i = 0; i < len(); i++) {
+      char &ch = *get(i);
+      ch       = Flock::to_lowercase(ch);
+    }
+
     return *this;
   }
 
-  void String::append(const String &c_str) {
-    return chars_.append(c_str.chars_);
-  }
-
-  void String::append(const char *c_str) {
-    const usize len = strlen(c_str);
-    reserve(chars_.len() + len);
-    for (usize i = 0; i < len; i++) {
-      chars_.push(c_str[i]);
+  String &String::make_uppercase() {
+    for (usize i = 0; i < len(); i++) {
+      char &ch = *get(i);
+      ch       = Flock::to_uppercase(ch);
     }
+
+    return *this;
   }
 
-  char String::pop() {
-    return chars_.pop();
+  String String::split_off(const usize at) {
+    ASSERT(at <= len(), "Out of bounds access");
+    String str{};
+    str.chars_ = chars_.split_off(at);
+    chars_.push('\0');
+    return str;
   }
 
-  char String::swap_remove(usize idx) {
-    return chars_.swap_remove(idx);
+  Pair<StringSlice, StringSlice> String::split_at(const usize at) {
+    ASSERT(at <= len(), "Out of bounds access");
+    const StringSlice first  = StringSlice::create(chars_.ptr(), at);
+    const StringSlice second = StringSlice::create(chars_.ptr() + at, len() - at);
+
+    return {.first = first, .second = second};
   }
 
-  usize String::reverse_find_n(const char c, const usize n) const {
-    return chars_.reverse_find_n(c, n);
-  }
-
-  usize String::find_n(const char c, const usize n) const {
-    return chars_.find_n(c, n);
-  }
-
-  usize String::find(const char c) const {
-    return chars_.find(c);
-  }
-
-  usize String::find_last(const char c) const {
-    return chars_.find_last(c);
-  }
-
-  usize String::reverse_find_n(const StringSlice string, usize n) const {
-    for (usize i = len() - string.len(); i != static_cast<usize>(0) - 1; i--) {
-      StringSlice slice = substring(i, string.len());
-      if (slice == string && n != 0) {
+  Maybe<usize> String::findn(const char c, usize n) const {
+    for (usize i = 0; i < len(); i++) {
+      if (chars_[i] == c) {
+        if (n == 0) {
+          return i;
+        }
         n--;
       }
-
-      if (slice == string && n == 0) {
-        return i;
-      }
     }
-
-    return NULL_POS;
+    return {};
   }
 
-  usize String::find_n(const StringSlice string, usize n) const {
-    for (usize i = 0; i <= len() - string.len(); i++) {
-      StringSlice slice = substring(i, string.len());
-      if (slice == string && n != 0) {
+  Maybe<usize> String::rfindn(const char c, usize n) const {
+    for (usize i = len(); i > 0; i--) {
+      if (chars_[i - 1] == c) {
+        if (n == 0) {
+          return i - 1;
+        }
         n--;
       }
+    }
+    return {};
+  }
 
-      if (slice == string && n == 0) {
-        return i;
+  Maybe<usize> String::find(const char c) const {
+    return findn(c, 0);
+  }
+
+  Maybe<usize> String::rfind(const char c) const {
+    return rfindn(c, 0);
+  }
+
+  Maybe<usize> String::rfindn(const StringSlice string, usize n) const {
+    if (string.len() > len()) {
+      return {};
+    }
+
+    for (usize i = len() - string.len() + 1; i > 0; i--) {
+      if (get(i - 1, string.len()) == string) {
+        if (n == 0) {
+          return i - 1;
+        }
+        n--;
       }
     }
 
-    return NULL_POS;
+    return {};
   }
 
-  usize String::find(const StringSlice string) const {
-    return find_n(string, 0);
+  Maybe<usize> String::findn(const StringSlice string, usize n) const {
+    if (string.len() > len()) {
+      return {};
+    }
+
+    for (usize i = 0; i + string.len() <= len(); i++) {
+      if (get(i, string.len()) == string) {
+        if (n == 0) {
+          return i;
+        }
+        n--;
+      }
+    }
+
+    return {};
   }
 
-  usize String::find_last(const StringSlice string) const {
-    return reverse_find_n(string, 0);
+  Maybe<usize> String::find(const StringSlice string) const {
+    return findn(string, 0);
   }
 
-  void String::replace_n(const char c, const char replace, const usize n) {
-    chars_.replace_n(c, replace, n);
+  Maybe<usize> String::rfind(const StringSlice string) const {
+    return rfindn(string, 0);
+  }
+\
+  void String::replacen(const char c, const char replace, const usize n) {
+    chars_.pop();
+    chars_.replacen(c, replace, n);
+    chars_.push('\0');
   }
 
-  void String::reverse_replace_n(const char c, const char replace, const usize n) {
-    chars_.reverse_replace_n(c, replace, n);
+  void String::rreplacen(const char c, const char replace, const usize n) {
+    chars_.pop();
+    chars_.rreplacen(c, replace, n);
+    chars_.push('\0');
   }
 
   void String::replace(const char c, const char replace) {
+    chars_.pop();
     chars_.replace(c, replace);
+    chars_.push('\0');
   }
 
-  void String::replace_last(const char c, const char replace) {
-    chars_.replace_last(c, replace);
+  void String::rreplace(const char c, const char replace) {
+    chars_.pop();
+    chars_.rreplace(c, replace);
+    chars_.push('\0');
   }
 
   void String::replace_all(const char c, const char replace) {
+    chars_.pop();
     chars_.replace_all(c, replace);
+    chars_.push('\0');
   }
 
   StringSlice String::as_slice() const {
-    return StringSlice::create(chars_.first(), chars_.len());
+    return StringSlice::create(chars_.ptr(), len());
   }
 
-  StringSlice String::substring(const usize first, const usize len) const {
-    ASSERT(first + len <= chars_.len(), "Out of bounds access");
-    return StringSlice::create(chars_.first() + first, len);
+  StringSlice String::get(const usize first, const usize length) const {
+    ASSERT(first + length <= len(), "Out of bounds access");
+    return StringSlice::create(chars_.ptr() + first, length);
   }
 
   bool String::operator==(const String &other) const {
@@ -301,12 +490,46 @@ namespace Flock {
     return !(*this == other);
   }
 
+  bool String::operator==(const char *other) const {
+    const usize other_len = strlen(other);
+    if (other_len != len()) {
+      return false;
+    }
+
+    for (usize i = 0; i < other_len; i++) {
+      if (chars_[i] != other[i]) {
+        return false;
+      }
+    }
+
+    return true;
+  }
+
+  bool String::operator!=(const char *other) const {
+    return !(*this == other);
+  }
+
+  String String::operator+(const StringSlice &other) const {
+    String string = with_capacity(len() + other.len());
+    string.push_str(*this);
+    string.push_str(other);
+    return string;
+  }
+
+  String String::operator+(const char *other) const {
+    return *this + StringSlice::from_c_str(other);
+  }
+
+  String::operator StringSlice() const {
+    return as_slice();
+  }
+
   char *String::begin() {
     return chars_.begin();
   }
 
   char *String::end() {
-    return chars_.end();
+    return chars_.begin() + len();
   }
 
   const char *String::begin() const {
@@ -314,7 +537,7 @@ namespace Flock {
   }
 
   const char *String::end() const {
-    return chars_.end();
+    return chars_.begin() + len();
   }
 
   Hash hash(const String &string) {

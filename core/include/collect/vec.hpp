@@ -8,7 +8,6 @@
 namespace Flock {
   static constexpr usize VECTOR_INIT_LENGTH = 8;
   static constexpr f32   VECTOR_GROW_FACTOR = 1.4f;
-  static constexpr usize NULL_POS           = INVALID;
 
   template<typename T>
   class Vec {
@@ -18,7 +17,7 @@ namespace Flock {
     usize      cap_       = 0;
 
   public:
-    static Vec empty() {
+    static Vec create() {
       Vec vector        = {};
       vector.allocator_ = Allocator::get_global();
       vector.len_       = 0;
@@ -29,7 +28,7 @@ namespace Flock {
       return vector;
     }
 
-    static Vec with_cap(usize cap) {
+    static Vec with_capacity(usize cap) {
       Vec vector        = {};
       vector.allocator_ = Allocator::get_global();
       vector.len_       = 0;
@@ -37,22 +36,6 @@ namespace Flock {
 
       vector.ptr_ = static_cast<T *>(alloc(vector.allocator_, cap * sizeof(T), alignof(T)));
       ASSERT(vector.ptr_, "Allocation failed");
-      return vector;
-    }
-
-    static Vec with_len(usize len, T fill = {}) {
-      Vec vector        = {};
-      vector.allocator_ = Allocator::get_global();
-      vector.len_       = len;
-      vector.cap_       = len;
-
-      vector.ptr_ = static_cast<T *>(alloc(vector.allocator_, len * sizeof(T), alignof(T)));
-      ASSERT(vector.ptr_, "Allocation failed");
-
-      for (usize i = 0; i < len; i++) {
-        new(vector.ptr_ + i) T(fill);
-      }
-
       return vector;
     }
 
@@ -133,11 +116,9 @@ namespace Flock {
         return;
       }
 
-#if __GNUC__
       if (len_ > cap_) {
-        __builtin_unreachable();
+        UNREACHABLE(); // For a gcc warning
       }
-#endif
 
       for (usize i = 0; i < len_; i++) {
         ptr_[i].~T();
@@ -150,23 +131,13 @@ namespace Flock {
       Flock::release(allocator_, ptr_, cap_ * sizeof(T));
     }
 
-    void grow() {
-      usize new_cap = cap_ < VECTOR_INIT_LENGTH ? VECTOR_INIT_LENGTH : cap_;
-      new_cap       *= VECTOR_GROW_FACTOR;
-
-      ptr_ = static_cast<T *>(realloc(allocator_, ptr_, cap_ * sizeof(T), new_cap * sizeof(T), alignof(T)));
-      cap_ = new_cap;
-
-      ASSERT(ptr_, "Allocation failed");
-    }
-
-    void reserve(usize cap) {
-      if (cap <= cap_) {
-        return;
+    void reserve(const usize additional) {
+      usize new_cap = cap_;
+      if (new_cap < VECTOR_INIT_LENGTH) {
+        new_cap = VECTOR_INIT_LENGTH;
       }
 
-      usize new_cap = cap_ < VECTOR_INIT_LENGTH ? VECTOR_INIT_LENGTH : cap_;
-      while (new_cap < cap) {
+      while (new_cap < len_ + additional) {
         new_cap *= VECTOR_GROW_FACTOR;
       }
 
@@ -176,99 +147,38 @@ namespace Flock {
       ASSERT(ptr_, "Allocation failed");
     }
 
-    void shrink_to(usize cap) {
-      if (cap >= cap_) {
+    void reserve_exact(const usize additional) {
+      if (cap_ >= len_ + additional) {
         return;
       }
 
-      if (cap < len_) {
-        for (usize i = cap; i < len_; i++) {
-          ptr_[i].~T();
-        }
+      const usize new_cap = len_ + additional;
+      ptr_ = static_cast<T *>(allocator_->realloc(ptr_, cap_ * sizeof(T), new_cap * sizeof(T), alignof(T)));
+      cap_ = new_cap;
+
+      ASSERT(ptr_, "Allocation failed");
+    }
+
+    void shrink_to(const usize min_capacity) {
+      if (min_capacity >= cap_) {
+        return;
       }
 
-      ptr_ = static_cast<T *>(realloc(allocator_, ptr_, cap_ * sizeof(T), cap * sizeof(T), alignof(T)));
-      cap_ = cap;
+      const usize new_cap = min_capacity < len_ ? len_ : min_capacity;
+
+      ptr_ = static_cast<T *>(allocator_->realloc(ptr_, cap_ * sizeof(T), new_cap * sizeof(T), alignof(T)));
+      cap_ = min_capacity;
     }
 
     void shrink_to_fit() {
       shrink_to(len_);
     }
 
-    Vec &resize(usize len) {
-      if (len > len_) {
-        if (len > cap_) {
-          reserve(len);
-        }
-
-        for (usize i = len_; i < len; i++) {
-          new(ptr_ + i) T();
-        }
-      } else if (len < len_) {
-        for (usize i = len; i < len_; i++) {
-          ptr_[i].~T();
-        }
-      }
-
-      len_ = len;
-      return *this;
-    }
-
-    Vec &resize(const usize len, const T &fill) {
-      if (len > len_) {
-        if (len > cap_) {
-          reserve(len);
-        }
-
-        for (usize i = len_; i < len; i++) {
-          new(ptr_ + i) T(fill);
-        }
-      } else if (len < len_) {
-        for (usize i = len; i < len_; i++) {
-          ptr_[i].~T();
-        }
-      }
-
-      len_ = len;
-      return *this;
-    }
-
-    Vec &resize(const usize len, T &&fill) {
-      if (len > len_) {
-        if (len > cap_) {
-          reserve(len);
-        }
-
-        for (usize i = len_; i < len; i++) {
-          new(ptr_ + i) T(std::move(fill));
-        }
-      } else if (len < len_) {
-        for (usize i = len; i < len_; i++) {
-          ptr_[i].~T();
-        }
-      }
-
-      len_ = len;
-      return *this;
-    }
-
-    void fill(T value) {
-      for (usize i = 0; i < len_; i++) {
-        ptr_[i] = value;
-      }
-    }
-
-    void empty_fill() {
-      for (usize i = 0; i < len_; i++) {
-        ptr_[i] = {};
-      }
-    }
-
     [[nodiscard]] usize len() const {
       return len_;
     }
 
-    [[nodiscard]] usize cap() const {
+    [[nodiscard]] usize capacity() const {
       return cap_;
     }
 
@@ -280,7 +190,47 @@ namespace Flock {
       return len_ == 0;
     }
 
+    [[nodiscard]] const T *ptr() const {
+      return ptr_;
+    }
+
+    [[nodiscard]] T *ptr() {
+      return ptr_;
+    }
+
+    T *first() {
+      return ptr_;
+    }
+
+    const T *first() const {
+      return ptr_;
+    }
+
+    T *last() {
+      if (!ptr_) {
+        return nullptr;
+      }
+
+      return ptr_ + len_ - 1;
+    }
+
+    const T *last() const {
+      if (!ptr_) {
+        return nullptr;
+      }
+
+      return ptr_ + len_ - 1;
+    }
+
     T *get(usize idx) {
+      if (idx >= len_) {
+        return nullptr;
+      }
+
+      return ptr_ + idx;
+    }
+
+    const T *get(usize idx) const {
       if (idx >= len_) {
         return nullptr;
       }
@@ -293,41 +243,148 @@ namespace Flock {
       return ptr_[idx];
     }
 
-    T *first() {
-      return get(0);
-    }
-
-    T *last() {
-      return get(len_ - 1);
-    }
-
-    const T *get(usize idx) const {
-      if (idx >= len_) {
-        return nullptr;
-      }
-
-      return ptr_ + idx;
-    }
-
     const T &operator[](usize idx) const {
       ASSERT(idx < len_, "Out of bounds access");
       return ptr_[idx];
     }
 
-    const T *first() const {
-      return get(0);
+    bool contains(const T &value) const {
+      for (usize i = 0; i < len_; i++) {
+        if (ptr_[i] == value) {
+          return true;
+        }
+      }
+
+      return false;
     }
 
-    const T *last() const {
-      return get(len_ - 1);
+    void push(const T &value) {
+      reserve(1);
+      new(ptr_ + len_) T(value);
+      len_++;
     }
 
-    Vec &push(const T &element = {}) {
-      return resize(len_ + 1, element);
+    void push(T &&value) {
+      reserve(1);
+      new(ptr_ + len_) T(std::move(value));
+      len_++;
     }
 
-    Vec &push(T &&element) {
-      return resize(len_ + 1, std::move(element));
+    void insert(usize idx, const T &value) {
+      ASSERT(idx <= len_, "Out of bounds access");
+      if (idx == len_) {
+        push(value);
+        return;
+      }
+
+      reserve(1);
+      for (usize i = len_; i > idx; i--) {
+        ptr_[i] = std::move(ptr_[i - 1]);
+      }
+
+      ptr_[idx] = value;
+      len_++;
+    }
+
+    void insert(usize idx, T &&value) {
+      ASSERT(idx <= len_, "Out of bounds access");
+      if (idx == len_) {
+        push(std::move(value));
+        return;
+      }
+
+      reserve(1);
+      for (usize i = len_; i > idx; i--) {
+        ptr_[i] = std::move(ptr_[i - 1]);
+      }
+
+      ptr_[idx] = std::move(value);
+      len_++;
+    }
+
+    Maybe<T> pop() {
+      if (len_ == 0) {
+        return {};
+      }
+
+      T value = std::move(ptr_[len_ - 1]);
+      len_--;
+      return value;
+    }
+
+    T remove(usize idx) {
+      ASSERT(idx < len_, "Out of bounds access");
+      if (idx == len_ - 1) {
+        return pop().get();
+      }
+
+      T value = std::move(ptr_[idx]);
+      for (usize i = idx; i < len_ - 1; i++) {
+        ptr_[i] = std::move(ptr_[i + 1]);
+      }
+
+      len_--;
+      return value;
+    }
+
+    T swap_remove(usize idx) {
+      ASSERT(len_ > 0 && idx < len_, "Out of bounds access");
+
+      if (idx == len_ - 1) {
+        return pop().get();
+      }
+
+      T val     = std::move(ptr_[idx]);
+      ptr_[idx] = std::move(ptr_[len_ - 1]);
+      len_--;
+
+      return val;
+    }
+
+    void grow(const usize len, const T &value) {
+      if (len <= len_) {
+        return;
+      }
+
+      reserve(len - len_);
+      for (usize i = len_; i < len; i++) {
+        new(ptr_ + i) T(value);
+      }
+
+      len_ = len;
+    }
+
+    void grow(const usize len, T &&value) {
+      if (len <= len_) {
+        return;
+      }
+
+      reserve(len - len_);
+      for (usize i = len_; i < len; i++) {
+        new(ptr_ + i) T(std::move(value));
+      }
+
+      len_ = len;
+    }
+
+    void truncate(const usize len) {
+      if (len >= len_) {
+        return;
+      }
+
+      for (usize i = len; i < len_; i++) {
+        ptr_[i].~T();
+      }
+
+      len_ = len;
+    }
+
+    void clear() {
+      for (usize i = 0; i < len_; i++) {
+        ptr_[i].~T();
+      }
+
+      len_ = 0;
     }
 
     void append(const Vec vector) {
@@ -338,29 +395,63 @@ namespace Flock {
       }
     }
 
-    T pop() {
-      ASSERT(len_ > 0, "Pop on empty vector");
-      T val = std::move(*last());
-      resize(len_ - 1);
-      return val;
-    }
-
-    T swap_remove(usize idx) {
-      ASSERT(len_ > 0, "Swap remove on empty vector");
-      ASSERT(idx < len_, "Out of bounds access");
-
-      if (idx == len_ - 1) {
-        return pop();
+    Vec split_off(const usize at) {
+      Vec vec = with_capacity(len_ - at);
+      for (usize i = at; i < len_; i++) {
+        vec.push(std::move(ptr_[i]));
       }
 
-      T val     = std::move(ptr_[idx]);
-      ptr_[idx] = std::move(*last());
-      len_--;
-
-      return val;
+      truncate(at);
+      return vec;
     }
 
-    usize reverse_find_n(const T &value, usize n) const {
+    Vec &resize(const usize new_len, const T &value = {}) {
+      if (new_len > len_) {
+        grow(new_len, value);
+      } else if (new_len < len_) {
+        truncate(new_len);
+      }
+
+      len_ = new_len;
+      return *this;
+    }
+
+    Vec &resize(const usize new_len, T &&value) {
+      if (new_len > len_) {
+        grow(new_len, std::move(value));
+      } else if (new_len < len_) {
+        truncate(new_len);
+      }
+
+      len_ = new_len;
+      return *this;
+    }
+
+    void swap(usize a, usize b) {
+      ASSERT(a < len_ && b < len_, "Out of bounds access");
+      auto temp = std::move(ptr_[a]);
+      ptr_[a]   = std::move(ptr_[b]);
+      ptr_[b]   = std::move(temp);
+    }
+
+    void reverse() {
+      for (usize i = 0; i < len_ / 2; i++) {
+        swap(i, len_ - i - 1);
+      }
+    }
+
+    void sort() {
+      // TODO: Implement sorting
+      PANIC();
+    }
+
+    void fill(const T &value) {
+      for (usize i = 0; i < len_; i++) {
+        ptr_[i] = value;
+      }
+    }
+
+    Maybe<usize> rfindn(const T &value, usize n) const {
       for (usize i = len_ - 1; i != static_cast<usize>(0) - 1; i--) {
         if (ptr_[i] == value && n != 0) {
           n--;
@@ -371,10 +462,10 @@ namespace Flock {
         }
       }
 
-      return NULL_POS;
+      return {};
     }
 
-    usize find_n(const T &value, usize n) const {
+    Maybe<usize> findn(const T &value, usize n) const {
       for (usize i = 0; i < len_; i++) {
         if (ptr_[i] == value && n != 0) {
           n--;
@@ -385,65 +476,57 @@ namespace Flock {
         }
       }
 
-      return NULL_POS;
+      return {};
     }
 
-    usize find(const T &value) const {
-      return find_n(value, 0);
+    Maybe<usize> find(const T &value) const {
+      return findn(value, 0);
     }
 
-    usize find_last(const T &value) const {
-      return reverse_find_n(value, 0);
+    Maybe<usize> rfind(const T &value) const {
+      return rfindn(value, 0);
     }
 
-    void replace_n(const T &value, const T &replace, usize n) {
+    void replacen(const T &value, const T &replace, usize n) {
       while (n != 0) {
-        usize i = find(value);
-        if (i == NULL_POS) {
+        auto i = find(value);
+        if (!i) {
           break;
         }
 
-        ptr_[i] = replace;
+        ptr_[i.get()] = replace;
         n--;
       }
     }
 
-    void reverse_replace_n(const T &value, const T &replace, usize n) {
+    void rreplacen(const T &value, const T &replace, usize n) {
       while (n != 0) {
-        usize i = find(value);
-        if (i == NULL_POS) {
+        auto i = find(value);
+        if (!i) {
           break;
         }
 
-        ptr_[i] = replace;
+        ptr_[i.get()] = replace;
         n--;
       }
     }
 
     void replace(const T &value, const T &replace) {
-      return replace_n(value, replace, 1);
+      return replacen(value, replace, 1);
     }
 
-    void replace_last(const T &value, const T &replace) {
-      return reverse_replace_n(value, replace, 1);
+    void rreplace(const T &value, const T &replace) {
+      return rreplacen(value, replace, 1);
     }
 
     void replace_all(const T &value, const T &replace) {
-      usize i = find_n(value, 0);
+      auto  i = findn(value, 0);
       usize n = 1;
-      while (i != NULL_POS) {
-        ptr_[i] = replace;
-        i       = find_n(value, n);
+      while (!i) {
+        ptr_[i.get()] = replace;
+        i             = findn(value, n);
         n++;
       }
-    }
-
-    T *begin() {
-      return ptr_;
-    }
-
-    T *end() {
-      return ptr_ + len_;
     }
 
     bool operator==(const Vec &other) const {
@@ -462,6 +545,14 @@ namespace Flock {
 
     bool operator!=(const Vec &other) const {
       return !(*this == other);
+    }
+
+    T *begin() {
+      return ptr_;
+    }
+
+    T *end() {
+      return ptr_ + len_;
     }
 
     const T *begin() const {

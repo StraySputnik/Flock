@@ -152,7 +152,7 @@ namespace Flock::SDL {
   Vec<OwnedRef<Event>> Window::consume_events(Vec<OwnedRef<Event>> &events) {
     Vec<OwnedRef<Event>> new_stack = {};
     while (!events.is_empty()) {
-      OwnedRef<Event> event = events.pop();
+      OwnedRef<Event> event = events.pop().move();
       const auto *window_event = static_cast<WindowEvent *>(event.get());
       if (window_event->get_window_id() == get_id()) {
         events_.push(std::move(event));

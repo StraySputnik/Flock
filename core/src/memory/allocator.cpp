@@ -69,6 +69,28 @@ namespace Flock {
     return allocator->realloc(src, src_size, dest_size, align);
   }
 
+  void *realloc_to(
+    Allocator * src_allocator,
+    Allocator * dest_allocator,
+    void *      src,
+    const usize src_size,
+    const usize dest_size,
+    const usize align
+  ) {
+    if (src_allocator == dest_allocator) {
+      return src;
+    }
+
+    void *dest = alloc(dest_allocator, dest_size, align);
+    if (!dest) {
+      return nullptr;
+    }
+
+    memcpy(dest, src, src_size < dest_size ? src_size : dest_size);
+    release(src_allocator, src, src_size);
+    return dest;
+  }
+
   void release(Allocator *allocator, void *ptr, usize size) {
     if (!allocator) {
       return sys_free(ptr);

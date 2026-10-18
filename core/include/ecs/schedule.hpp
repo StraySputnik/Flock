@@ -2,7 +2,7 @@
 
 #include "common.hpp"
 #include "collect/vec.hpp"
-#include "collect/map.hpp"
+#include "collect/hash_map.hpp"
 
 namespace Flock::ECS {
   class World;
@@ -16,8 +16,8 @@ namespace Flock::ECS {
   };
 
   class FLK_API Schedule {
-    Map<Stage, Vec<System>>    systems_     = {};
-    Map<Stage, Vec<MutSystem>> mut_systems_ = {};
+    HashMap<Stage, Vec<System>>    systems_     = {};
+    HashMap<Stage, Vec<MutSystem>> mut_systems_ = {};
 
   public:
     static Schedule create();

@@ -2,7 +2,7 @@
 
 #include "allocator.hpp"
 #include "common.hpp"
-#include "collect/map.hpp"
+#include "collect/hash_map.hpp"
 
 namespace Flock {
   class Allocator;
@@ -14,23 +14,24 @@ namespace Flock {
 
   public:
     template<typename U>
-    static OwnedRef from_derived(const U &derived) {
-      static_assert(std::is_base_of_v<T, U>, "U must derive from T");
+    static OwnedRef from_value(const U &value) {
+      static_assert(std::is_same_v<T, U> || std::is_base_of_v<T, U>, "U must be the same as or derive from T");
 
       OwnedRef ref{};
       ref.allocator_ = Allocator::get_global();
       void *mem      = alloc(ref.allocator_, sizeof(U), alignof(U));
       ASSERT(mem, "Allocation failed");
-      ref.ptr_ = new(mem) U(derived);
+      ref.ptr_ = new(mem) U(value);
       return ref;
     }
 
-    static OwnedRef from_value(const T &value) {
+    static OwnedRef from_value(T &&value) {
       OwnedRef ref{};
       ref.allocator_ = Allocator::get_global();
-      ref.ptr_       = static_cast<T *>(alloc(ref.allocator_, sizeof(T), alignof(T)));
-      ASSERT(ref.ptr_, "Allocation failed");
-      *ref.ptr_ = value;
+      void *mem      = alloc(ref.allocator_, sizeof(T), alignof(T));
+      ASSERT(mem, "Allocation failed");
+      ref.ptr_ = new(mem) T(value);
+
       return ref;
     }
 
@@ -120,20 +121,34 @@ namespace Flock {
   // Not atomic
   template<typename T>
   class SharedRef {
-    inline static Map<T *, usize> ref_counts_ = {};
+    inline static HashMap<T *, usize> ref_counts_ = {};
 
     T *        ptr_       = nullptr;
     Allocator *allocator_ = nullptr;
 
   public:
-    static SharedRef from_value(const T &value) {
+    template<typename U>
+    static SharedRef from_value(const U &value) {
+      static_assert(std::is_same_v<T, U> || std::is_base_of_v<T, U>, "U must be the same as or derive from T");
+
       SharedRef ref{};
       ref.allocator_ = Allocator::get_global();
-      ref.ptr_       = static_cast<T *>(alloc(ref.allocator_, sizeof(T), alignof(T)));
-      ASSERT(ref.ptr_, "Allocation failed");
-      *ref.ptr_ = value;
+      void *mem      = alloc(ref.allocator_, sizeof(U), alignof(U));
+      ASSERT(mem, "Allocation failed");
+      ref.ptr_ = new(mem) U(value);
 
-      ++ref_counts_[ref.ptr_];
+      printf("ALLOC\n");
+      return ref;
+    }
+
+    static SharedRef from_value(T &&value) {
+      SharedRef ref{};
+      ref.allocator_ = Allocator::get_global();
+      void *mem      = alloc(ref.allocator_, sizeof(T), alignof(T));
+      ASSERT(mem, "Allocation failed");
+      ref.ptr_ = new(mem) T(value);
+
+      printf("ALLOC\n");
       return ref;
     }
 
@@ -153,6 +168,7 @@ namespace Flock {
       allocator_ = other.allocator_;
 
       ++ref_counts_[ptr_];
+      printf("COPY, COUNT: %zu\n", ref_counts_[ptr_]);
     };
 
     SharedRef(SharedRef &&other) noexcept {
@@ -160,6 +176,8 @@ namespace Flock {
       allocator_       = other.allocator_;
       other.ptr_       = nullptr;
       other.allocator_ = nullptr;
+
+      printf("MOVE\n");
     }
 
     SharedRef &operator=(const SharedRef &other) {
@@ -171,7 +189,7 @@ namespace Flock {
 
       ptr_       = other.ptr_;
       allocator_ = other.allocator_;
-      ref_counts_[ptr_]++;
+      ++ref_counts_[ptr_];
 
       return *this;
     }
@@ -200,7 +218,7 @@ namespace Flock {
         return;
       }
 
-      ref_counts_[ptr_]--;
+      --ref_counts_[ptr_];
       if (ref_counts_[ptr_] == 0) {
         ptr_->~T();
         allocator_->release(ptr_, sizeof(T));
@@ -216,22 +234,22 @@ namespace Flock {
     }
 
     T *operator ->() {
-      ASSERT(ptr_, "Deref on invalid OwnedRef");
+      ASSERT(ptr_, "Deref on invalid SharedRef");
       return ptr_;
     }
 
     const T *operator ->() const {
-      ASSERT(ptr_, "Deref on invalid OwnedRef");
+      ASSERT(ptr_, "Deref on invalid SharedRef");
       return ptr_;
     }
 
     T *operator *() {
-      ASSERT(ptr_, "Deref on invalid OwnedRef");
+      ASSERT(ptr_, "Deref on invalid SharedRef");
       return ptr_;
     }
 
     const T *operator*() const {
-      ASSERT(ptr_, "Deref on invalid OwnedRef");
+      ASSERT(ptr_, "Deref on invalid SharedRef");
       return ptr_;
     }
 

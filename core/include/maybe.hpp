@@ -25,12 +25,12 @@ namespace Flock {
       return !has_value_;
     }
 
-    const T &get_value() const {
+    const T &get() const {
       ASSERT(has_value_, "Get on empty Maybe");
       return value_;
     }
 
-    T &get_value() {
+    T &get() {
       ASSERT(has_value_, "Get on empty Maybe");
       return value_;
     }

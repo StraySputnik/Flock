@@ -10,7 +10,7 @@ add_library(
         include/collect/string.hpp
         src/collect/string.cpp
         include/hash.hpp
-        include/collect/map.hpp
+        include/collect/hash_map.hpp
         include/ecs/group.hpp
         include/ecs/registry.hpp
         src/ecs/registry.cpp
@@ -34,10 +34,13 @@ add_library(
         include/math/color.hpp
         include/asset/asset.hpp
         src/asset/asset.cpp
-        include/file/file.hpp
-        src/file/file.cpp
-        include/file/path.hpp
-        src/file/path.cpp
+        include/file_system/path.hpp
+        src/file_system/path.cpp
+        include/collect/pair.hpp
+        include/file_system/file.hpp
+        src/file_system/file.cpp
+        include/file_system/directory.hpp
+        src/file_system/directory.cpp
 )
 
 target_include_directories(${PROJECT_NAME} PUBLIC ${PROJECT_SOURCE_DIR}/src ${PROJECT_SOURCE_DIR}/include)
@@ -57,21 +60,6 @@ if (UNIX)
     endif ()
 endif ()
 
-
 CPMAddPackage("gh:libsdl-org/SDL#release-3.4.18")
-CPMAddPackage(
-        NAME tinyobjloader
-        GITHUB_REPOSITORY tinyobjloader/tinyobjloader
-        GIT_TAG release
-        GIT_SHALLOW TRUE
-)
-
-CPMAddPackage(
-        NAME bgfx
-        GITHUB_REPOSITORY bkaradzic/bgfx.cmake
-        GIT_TAG v1.164.9539-583
-        GIT_SHALLOW TRUE
-        GIT_SUBMODULES "bgfx" "bx" "bimg"
-)
-
-target_link_libraries(${PROJECT_NAME} PUBLIC SDL3::SDL3 bgfx tinyobjloader_c)
+CPMAddPackage("gh:tinyobjloader/tinyobjloader#release")
+target_link_libraries(${PROJECT_NAME} PUBLIC SDL3::SDL3 stbi tinyobjloader_c)

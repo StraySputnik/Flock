@@ -36,7 +36,8 @@ namespace Flock {
   }
 
   void EventHandler::handle_events() {
-    while (OwnedRef<Event> event = events_.pop()) {
+    while (!events_.is_empty()) {
+      OwnedRef<Event> event = events_.pop().move();
       dispatch(std::move(event));
     }
   }

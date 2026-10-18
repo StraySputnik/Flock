@@ -16,9 +16,9 @@ namespace Flock::ECS {
   public:
     static Group create(usize cap = GROUP_DEFAULT_CAPACITY) {
       Group group{};
-      group.sparse     = Vec<usize>::with_cap(cap);
-      group.dense      = Vec<EntityID>::with_cap(cap);
-      group.components = Vec<T>::with_cap(cap);
+      group.sparse     = Vec<usize>::with_capacity(cap);
+      group.dense      = Vec<EntityID>::with_capacity(cap);
+      group.components = Vec<T>::with_capacity(cap);
       return group;
     }
 

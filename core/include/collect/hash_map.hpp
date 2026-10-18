@@ -2,6 +2,7 @@
 
 #include "common.hpp"
 #include "hash.hpp"
+#include "pair.hpp"
 #include "vec.hpp"
 
 namespace Flock {
@@ -10,11 +11,10 @@ namespace Flock {
   static constexpr usize MAP_INACTIVE_BUCKET    = INVALID - 1;
 
   template<typename K, typename V>
-  class Map {
+  class HashMap {
     struct Bucket {
-      usize next_bucket_idx = MAP_INACTIVE_BUCKET;
-      K     key             = {};
-      V     value           = {};
+      usize      next_bucket_idx = MAP_INACTIVE_BUCKET;
+      Pair<K, V> pair;
     };
 
     Vec<Bucket> buckets_           = {};
@@ -22,11 +22,12 @@ namespace Flock {
     usize       elem_count_        = 0;
 
   public:
-    static Map create() {
-      Map map{};
-      map.buckets_           = Vec<Bucket>::with_len(MAP_INIT_VECTOR_LENGTH);
-      map.collision_buckets_ = Vec<Bucket>::with_cap(1);
+    static HashMap create() {
+      HashMap map{};
+      map.buckets_           = Vec<Bucket>::with_capacity(MAP_INIT_VECTOR_LENGTH);
+      map.collision_buckets_ = Vec<Bucket>::with_capacity(1);
       map.elem_count_        = 0;
+      map.buckets_.resize(map.buckets_.capacity());
       return map;
     }
 
@@ -41,7 +42,7 @@ namespace Flock {
         return;
       }
 
-      auto buckets = Vec<Bucket>::with_cap(elem_count_);
+      auto buckets = Vec<Bucket>::with_capacity(elem_count_);
       for (const auto &bucket: buckets_) {
         if (bucket.next_bucket_idx == MAP_INACTIVE_BUCKET) {
           continue;
@@ -58,11 +59,11 @@ namespace Flock {
         buckets.push(bucket);
       }
 
-      buckets_.empty_fill();
+      buckets_.fill({});
       collision_buckets_.resize(0);
 
       for (const auto &bucket: buckets) {
-        insert_impl(bucket.key, bucket.value);
+        insert_impl(bucket.pair.first, bucket.pair.second);
       }
     }
 
@@ -84,8 +85,8 @@ namespace Flock {
 
       const f32 load_factor = static_cast<f32>(elem_count_) / static_cast<f32>(buckets_.len());
       if (load_factor > MAP_LOAD_FACTOR) {
-        buckets_.grow();
-        resize(buckets_.cap());
+        buckets_.reserve_exact(buckets_.len() * 0.5);
+        resize(buckets_.capacity());
       }
 
       insert_impl(key, value);
@@ -103,12 +104,12 @@ namespace Flock {
       Bucket *bucket = buckets_.get(idx);
       ASSERT(bucket, "Out of bounds access");
 
-      while (bucket && bucket->key != key) {
+      while (bucket && bucket->pair.first != key) {
         bucket = collision_buckets_.get(bucket->next_bucket_idx);
       }
 
       if (bucket) {
-        return &bucket->value;
+        return &bucket->pair.second;
       }
 
       return nullptr;
@@ -125,12 +126,12 @@ namespace Flock {
       Bucket *bucket = buckets_.get(idx);
       ASSERT(bucket, "Out of bounds access");
 
-      while (bucket && bucket->key != key) {
+      while (bucket && bucket->pair.first != key) {
         bucket = collision_buckets_.get(bucket->next_bucket_idx);
       }
 
       if (bucket) {
-        return &bucket->value;
+        return &bucket->pair.second;
       }
 
       return nullptr;
@@ -164,15 +165,131 @@ namespace Flock {
       Bucket *bucket = buckets_.get(idx);
       ASSERT(bucket, "Out of bounds access");
 
-      while (bucket && bucket->key != key) {
+      while (bucket && bucket->pair.first != key) {
         bucket = collision_buckets_.get(bucket->next_bucket_idx);
       }
 
       if (bucket) {
         bucket->next_bucket_idx = MAP_INACTIVE_BUCKET;
-        bucket->key             = {};
-        bucket->value           = {};
+        bucket->pair.first      = {};
+        bucket->pair.second     = {};
       }
+    }
+
+    class Iter {
+      HashMap &map_;
+      Bucket * ptr_;
+
+      Bucket *next_bucket() {
+        auto ptr = ptr_;
+        ++ptr;
+        while (ptr->next_bucket_idx == MAP_INACTIVE_BUCKET) {
+          ++ptr;
+
+          if (ptr == map_.buckets_.end()) {
+            ptr = map_.collision_buckets_.begin();
+          }
+
+          if (ptr == map_.collision_buckets_.end()) {
+            return nullptr;
+          }
+        }
+
+        return ptr;
+      }
+
+    public:
+      explicit Iter(HashMap &map, Bucket *bucket) : map_(map), ptr_(bucket) {
+      }
+
+      Pair<K, V> &operator*() const {
+        return ptr_->pair;
+      }
+
+      Pair<K, V> *operator->() const {
+        return &ptr_->pair;
+      }
+
+      Iter &operator++() {
+        ptr_ = next_bucket();
+        return *this;
+      }
+
+      Iter operator++(i32) {
+        auto tmp = *this;
+        ptr_     = next_bucket();
+        return tmp;
+      }
+
+      friend bool operator==(const Iter &a, const Iter &b) {
+        return a.ptr_ == b.ptr_;
+      }
+    };
+
+    class ConstIter {
+      const HashMap &map_;
+      const Bucket * ptr_;
+
+      const Bucket *next_bucket() {
+        auto ptr = ptr_;
+        ++ptr;
+        while (ptr->next_bucket_idx == MAP_INACTIVE_BUCKET) {
+          ++ptr;
+
+          if (ptr == map_.buckets_.end()) {
+            ptr = map_.collision_buckets_.begin();
+          }
+
+          if (ptr == map_.collision_buckets_.end()) {
+            return nullptr;
+          }
+        }
+
+        return ptr;
+      }
+
+    public:
+      explicit ConstIter(const HashMap &map, const Bucket *bucket) : map_(map), ptr_(bucket) {
+      }
+
+      const Pair<K, V> &operator*() const {
+        return ptr_->pair;
+      }
+
+      const Pair<K, V> *operator->() const {
+        return &ptr_->pair;
+      }
+
+      ConstIter &operator++() {
+        ptr_ = next_bucket();
+        return *this;
+      }
+
+      ConstIter operator++(i32) {
+        auto tmp = *this;
+        ptr_     = next_bucket();
+        return tmp;
+      }
+
+      friend bool operator==(const ConstIter &a, const ConstIter &b) {
+        return a.ptr_ == b.ptr_;
+      }
+    };
+
+    Iter begin() {
+      return Iter(*this, buckets_.begin());
+    }
+
+    Iter end() {
+      return Iter(*this, collision_buckets_.end());
+    }
+
+    ConstIter begin() const {
+      return ConstIter(*this, buckets_.begin());
+    }
+
+    ConstIter end() const {
+      return ConstIter(*this, collision_buckets_.end());
     }
 
   private:
@@ -184,7 +301,7 @@ namespace Flock {
       ASSERT(bucket, "Out of bounds access");
 
       if (bucket->next_bucket_idx != MAP_INACTIVE_BUCKET) {
-        collision_buckets_.push(Bucket{.next_bucket_idx = INVALID, .key = key, .value = value});
+        collision_buckets_.push(Bucket{.next_bucket_idx = INVALID, .pair = {key, value}});
         while (bucket->next_bucket_idx != INVALID && bucket->next_bucket_idx != MAP_INACTIVE_BUCKET) {
           bucket = collision_buckets_.get(bucket->next_bucket_idx);
         }
@@ -192,8 +309,8 @@ namespace Flock {
         bucket->next_bucket_idx = collision_buckets_.len() - 1;
       } else {
         bucket->next_bucket_idx = INVALID;
-        bucket->key             = key;
-        bucket->value           = value;
+        bucket->pair.first      = key;
+        bucket->pair.second     = value;
       }
     }
   };

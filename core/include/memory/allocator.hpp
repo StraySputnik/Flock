@@ -24,7 +24,15 @@ namespace Flock {
 
   FLK_API void *alloc(Allocator *allocator, usize size, usize align = alignof(usize));
   FLK_API void *realloc(Allocator *allocator, void *src, usize src_size, usize dest_size, usize align = alignof(usize));
-  FLK_API void  release(Allocator *allocator, void *ptr, usize size);
+  FLK_API void *realloc_to(
+    Allocator *src_allocator,
+    Allocator *dest_allocator,
+    void *     src, usize src_size,
+    usize      dest_size,
+    usize      align = alignof(usize)
+  );
+
+  FLK_API void release(Allocator *allocator, void *ptr, usize size);
 
   class FLK_API BumpAllocator : public Allocator {
     byte *ptr_    = nullptr;
