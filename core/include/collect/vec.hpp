@@ -81,7 +81,7 @@ namespace Flock {
       ASSERT(ptr_, "Allocation failed");
 
       for (usize i = 0; i < len_; i++) {
-        ptr_[i] = other[i];
+        new(ptr_ + i) T(other[i]);
       }
 
       return *this;
@@ -124,11 +124,11 @@ namespace Flock {
         ptr_[i].~T();
       }
 
+      Flock::release(allocator_, ptr_, cap_ * sizeof(T));
+
       ptr_ = nullptr;
       len_ = 0;
       cap_ = 0;
-
-      Flock::release(allocator_, ptr_, cap_ * sizeof(T));
     }
 
     void reserve(const usize additional) {

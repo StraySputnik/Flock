@@ -55,8 +55,8 @@ if (UNIX)
     )
 
     if (SANITIZER)
-        target_compile_options(${PROJECT_NAME} PRIVATE -fsanitize=address)
-        target_link_options(${PROJECT_NAME} PRIVATE -fsanitize=address)
+        target_compile_options(${PROJECT_NAME} PUBLIC -fsanitize=address)
+        target_link_options(${PROJECT_NAME} PUBLIC -fsanitize=address)
     endif ()
 endif ()
 

@@ -24,17 +24,60 @@ namespace Flock::Asset {
 
     AssetLoader loader = {};
     loader.asset_dir_  = asset_directory;
-    for (auto &filepath: FileSystem::Directory::list_files(asset_directory, true).get()) {
+    auto files         = FileSystem::Directory::list_files(asset_directory, true).get();
+    for (auto &filepath: files) {
       if (filepath.extension() == "png") {
-        loader.load<Image>(filepath.relative_to(asset_directory).get());
+        auto path = filepath.relative_to(asset_directory).get();
+        loader.load<Image>(path);
       }
 
       if (filepath.extension() == "obj") {
-        loader.load<Mesh>(filepath.relative_to(asset_directory).get());
+        auto path = filepath.relative_to(asset_directory).get();
+        loader.load<Mesh>(path);
       }
     }
 
     return loader;
+  }
+
+  AssetLoader::AssetLoader(AssetLoader &&other) noexcept {
+    assets_           = std::move(other.assets_);
+    asset_allocators_ = std::move(other.asset_allocators_);
+    asset_dir_        = std::move(other.asset_dir_);
+  }
+
+  AssetLoader &AssetLoader::operator=(AssetLoader &&other) noexcept {
+    if (this == &other) {
+      return *this;
+    }
+
+    release();
+
+    assets_           = std::move(other.assets_);
+    asset_allocators_ = std::move(other.asset_allocators_);
+    asset_dir_        = std::move(other.asset_dir_);
+
+    return *this;
+  }
+
+  AssetLoader::~AssetLoader() {
+    release();
+  }
+
+  void AssetLoader::release() {
+    for (const auto &[id, asset]: assets_) {
+      if (asset.type == AssetType::Image) {
+        unload<Image>({.id = id});
+      } else if (asset.type == AssetType::Mesh) {
+        unload<Mesh>({.id = id});
+      } else {
+        ASSERT(false, "Unknown asset type");
+      }
+    }
+
+    assets_.release();
+    asset_allocators_.release();
+    asset_dir_ = {};
   }
 
   void AssetLoader::set_allocator(const AssetType type, Allocator *allocator) {
@@ -103,6 +146,7 @@ namespace Flock::Asset {
 
     tobj_scene_free_f(&scene);
     tobj_diag_free(&diag, nullptr);
+    Flock::release(nullptr, ptr, size);
 
     return result;
   }
@@ -133,8 +177,8 @@ namespace Flock::Asset {
     Image result;
     result.width  = x;
     result.height = y;
-    for (usize j = 0; j < y; j++) {
-      for (usize i = 0; i < x; i++) {
+    for (usize j = 0; j < static_cast<usize>(y); j++) {
+      for (usize i = 0; i < static_cast<usize>(x); i++) {
         Color4u8 color{};
         color.r = data[(j * x + i) * N + 0];
         color.g = data[(j * x + i) * N + 1];
@@ -146,7 +190,7 @@ namespace Flock::Asset {
     }
 
     stbi_image_free(data);
-    release(nullptr, ptr, size);
+    Flock::release(nullptr, ptr, size);
     return result;
   }
 }

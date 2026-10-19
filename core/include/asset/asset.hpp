@@ -111,6 +111,17 @@ namespace Flock::Asset {
     static Maybe<AssetLoader> create(const char *asset_directory);
     static Maybe<AssetLoader> create(const Filepath &asset_directory);
 
+    AssetLoader() = default;
+
+    AssetLoader(const AssetLoader &) = delete;
+    AssetLoader(AssetLoader &&other) noexcept;
+
+    AssetLoader &operator=(const AssetLoader &) = delete;
+    AssetLoader &operator=(AssetLoader &&other) noexcept;
+
+    ~AssetLoader();
+
+    void release();
     void set_allocator(AssetType type, Allocator *allocator);
 
     template<typename T>
@@ -155,7 +166,7 @@ namespace Flock::Asset {
 
       T *ptr = static_cast<T *>(assets_[id].data);
       ptr->~T();
-      release(asset_allocators_[asset_type<T>()], ptr, asset_type_size(asset_type<T>()));
+      Flock::release(asset_allocators_[asset_type<T>()], ptr, asset_type_size(asset_type<T>()));
       assets_.remove(id);
     }
 

@@ -195,7 +195,8 @@ namespace Flock::FileSystem {
     }
   }
 
-  void Path::parse(StringSlice slice) {
+  void Path::parse(const StringSlice slice) {
+    // You just had to be different Windows...
     String t = slice.to_string();
     if constexpr (WINDOWS) {
       t.replace_all('\\', '/');
@@ -203,28 +204,32 @@ namespace Flock::FileSystem {
 
     usize i        = 0;
     bool  is_alpha = (t[0] >= 'a' && t[0] <= 'z') || (t[0] >= 'A' && t[0] <= 'Z');
-    if constexpr (WINDOWS && t.len() >= 2 && is_alpha && t[1] == ':') {
-      root_ = t.get(0, 2).to_string(); // drive
-      i     = 2;
-      if (i < t.len() && t[i] == '/') {
-        root_.push('/');
-        ++i;
-      }
-    } else if constexpr (WINDOWS && t.len() >= 3 && t[0] == '/' && t[1] == '/' && t[2] != '/') {
-      auto  a = t.findn('/', 2); // end of server name
-      usize e = t.len();
-      if (a) {
-        auto b = t.findn('/', a.get() + 1); // end of share name
-        if (b) {
-          e = b.get();
+    if constexpr (WINDOWS) {
+      if (t.len() >= 2 && is_alpha && t[1] == ':') {
+        root_ = t.get(0, 2).to_string();
+        i     = 2;
+        if (i < t.len() && t[i] == '/') {
+          root_.push('/');
+          ++i;
         }
+      } else if (t.len() >= 3 && t[0] == '/' && t[1] == '/' && t[2] != '/') {
+        auto  a = t.findn('/', 2);
+        usize e = t.len();
+        if (a) {
+          auto b = t.findn('/', a.get() + 1);
+          if (b) {
+            e = b.get();
+          }
+        }
+        root_ = t.get(0, e).to_string();
+        if (*root_.last() != '/') root_.push('/');
+        i = e;
       }
-      root_ = t.get(0, e).to_string(); // //server/share
-      if (*root_.last() != '/') root_.push('/');
-      i = e;
-    } else if (!t.is_empty() && t[0] == '/') {
-      root_ = String::from_c_str("/");
-      i     = 1;
+    } else {
+      if (!t.is_empty() && t[0] == '/') {
+        root_ = String::from_c_str("/");
+        i     = 1;
+      }
     }
 
     usize dir = i;

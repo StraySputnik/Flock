@@ -169,7 +169,13 @@ namespace Flock {
         bucket = collision_buckets_.get(bucket->next_bucket_idx);
       }
 
-      if (bucket) {
+      if (!bucket) {
+        return;
+      }
+
+      if (bucket->next_bucket_idx != INVALID && bucket->next_bucket_idx != MAP_INACTIVE_BUCKET) {
+        *bucket = std::move(collision_buckets_[bucket->next_bucket_idx]);
+      } else {
         bucket->next_bucket_idx = MAP_INACTIVE_BUCKET;
         bucket->pair.first      = {};
         bucket->pair.second     = {};
@@ -200,6 +206,9 @@ namespace Flock {
 
     public:
       explicit Iter(HashMap &map, Bucket *bucket) : map_(map), ptr_(bucket) {
+        if (bucket && bucket->next_bucket_idx == MAP_INACTIVE_BUCKET) {
+          ptr_ = next_bucket();
+        }
       }
 
       Pair<K, V> &operator*() const {
@@ -250,6 +259,9 @@ namespace Flock {
 
     public:
       explicit ConstIter(const HashMap &map, const Bucket *bucket) : map_(map), ptr_(bucket) {
+        if (bucket->next_bucket_idx == MAP_INACTIVE_BUCKET) {
+          ptr_ = next_bucket();
+        }
       }
 
       const Pair<K, V> &operator*() const {
