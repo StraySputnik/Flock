@@ -20,7 +20,7 @@ namespace Flock::FileSystem {
 
   static constexpr usize MAX_CHUNK_SIZE = 1u << 30;
 
-  Maybe<File> File::load(const Filepath &filepath, const FileMode mode) {
+  Maybe<File> File::open(const Filepath &filepath, const FileMode mode) {
     DWORD access      = 0;
     DWORD disposition = 0;
     switch (mode) {
@@ -158,7 +158,7 @@ namespace Flock::FileSystem {
 
 #else
 
-  Maybe<File> File::load(const Filepath &filepath, const FileMode mode) {
+  Maybe<File> File::open(const Filepath &filepath, const FileMode mode) {
     i32 flags = 0;
     switch (mode) {
       case FileMode::ReadOnly:
@@ -173,7 +173,7 @@ namespace Flock::FileSystem {
       default: return {};
     }
 
-    const i32 fd = open(filepath.to_native_string().c_str(), flags | O_CLOEXEC, 0644);
+    const i32 fd = ::open(filepath.to_native_string().c_str(), flags | O_CLOEXEC, 0644);
     if (fd < 0) {
       return {};
     }

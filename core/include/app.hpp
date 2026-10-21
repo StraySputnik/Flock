@@ -21,7 +21,7 @@ namespace Flock {
     void run();
 
   private:
-    bool is_running() const;
+    [[nodiscard]] bool is_running() const;
 
     void start();
     void end();

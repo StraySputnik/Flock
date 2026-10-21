@@ -41,6 +41,11 @@ add_library(
         src/file_system/file.cpp
         include/file_system/directory.hpp
         src/file_system/directory.cpp
+        include/debug/print.hpp
+        include/debug/log.hpp
+        src/debug/log.cpp
+        include/time/time.hpp
+        src/time/time.cpp
 )
 
 target_include_directories(${PROJECT_NAME} PUBLIC ${PROJECT_SOURCE_DIR}/src ${PROJECT_SOURCE_DIR}/include)

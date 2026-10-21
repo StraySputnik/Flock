@@ -8,7 +8,7 @@ A C++ game engine inspired by Bevy (hence the name).
 - [x] Core systems (Memory, Collections, Mathematics, etc.)
 - [x] ECS
 - [x] Windowing
-- [ ] Asset loading
+- [x] Asset loading
 - [ ] Graphics
 - [ ] Input
 - [ ] Audio

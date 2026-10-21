@@ -1,12 +1,13 @@
 #include "app.hpp"
 #include "common.hpp"
 #include "asset/asset.hpp"
+#include "debug/log.hpp"
 
 using namespace Flock;
 
 i32 main() {
+  Debug::Logger::create("Flock", {});
   BumpAllocator allocator = BumpAllocator::create(4096).move();
-
   {
     AssetLoader loader = AssetLoader::create("../../assets/").move();
 

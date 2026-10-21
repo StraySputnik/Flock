@@ -18,7 +18,7 @@ namespace Flock::FileSystem {
 #endif
 
   public:
-    static Maybe<File> load(const Filepath &filepath, FileMode mode);
+    static Maybe<File> open(const Filepath &filepath, FileMode mode);
 
     File() = default;
 

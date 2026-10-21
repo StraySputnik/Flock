@@ -4,6 +4,7 @@
 
 #include "common.hpp"
 #include "collect/string.hpp"
+#include "debug/log.hpp"
 #include "file_system/path.hpp"
 #include "math/color.hpp"
 #include "math/vector.hpp"
@@ -23,6 +24,7 @@ namespace Flock::Asset {
 
   struct FLK_API Mesh {
     Vec<Vector3f> vertices   = {};
+    Vec<Vector3f> normals    = {};
     Vec<Vector2f> tex_coords = {};
     Vec<u32>      indices    = {};
   };
@@ -155,6 +157,8 @@ namespace Flock::Asset {
 
     template<typename T>
     void unload(const AssetHandle<T> &asset) {
+      Debug::Logger *logger = Debug::Logger::get("Flock");
+
       if (!asset.is_valid()) {
         return;
       }
@@ -168,6 +172,8 @@ namespace Flock::Asset {
       ptr->~T();
       Flock::release(asset_allocators_[asset_type<T>()], ptr, asset_type_size(asset_type<T>()));
       assets_.remove(id);
+
+      logger->log_inf("Unloaded asset with ID %llu", id);
     }
 
     template<typename T>

@@ -9,6 +9,7 @@
 
 #include "file_system/directory.hpp"
 #include "file_system/file.hpp"
+#include "debug/log.hpp"
 
 namespace Flock::Asset {
   Maybe<AssetLoader> AssetLoader::create(const char *asset_directory) {
@@ -16,8 +17,12 @@ namespace Flock::Asset {
   }
 
   Maybe<AssetLoader> AssetLoader::create(const Filepath &asset_directory) {
+    Debug::Logger *logger = Debug::Logger::get("Flock");
+
     if (!FileSystem::Directory::exists(asset_directory)) {
+      logger->log_inf("Directory %s does not exist, creating directory", asset_directory.to_string().c_str());
       if (!FileSystem::Directory::create(asset_directory)) {
+        logger->log_err("Failed to create asset directory %s", asset_directory.to_string().c_str());
         return {};
       }
     }
@@ -101,6 +106,8 @@ namespace Flock::Asset {
   }
 
   Maybe<Mesh> AssetLoader::load_mesh_impl(const Filepath &asset_path) {
+    Debug::Logger *logger = Debug::Logger::get("Flock");
+
     if (asset_path.extension() != "obj") {
       return {};
     }
@@ -112,8 +119,9 @@ namespace Flock::Asset {
     String path_string = asset_path.to_string();
     path_string.push('\0');
 
-    Maybe<File> file = File::load(asset_path, FileMode::ReadOnly);
+    Maybe<File> file = File::open(asset_path, FileMode::ReadOnly);
     if (!file) {
+      logger->log_err("Failed to load mesh %s: Failed to open file", asset_path.to_string().c_str());
       return {};
     }
 
@@ -122,7 +130,7 @@ namespace Flock::Asset {
     file->read_exact(ptr, size, 0);
     if (tobj_load_obj_from_memory_f(&scene, ptr, size, &cfg, &diag) != TOBJ_OK) {
       if (diag.err) {
-        fprintf(stderr, "%s\n", diag.err);
+        logger->log_err("Failed to load mesh %s: %s", asset_path.to_string().c_str(), diag.err);
       }
 
       return {};
@@ -132,28 +140,37 @@ namespace Flock::Asset {
 
     const tobj_mesh_f *mesh = &scene.shapes[0].mesh;
     for (size_t i = 0; i < mesh->num_indices; i++) {
-      const tobj_index idx = mesh->indices[i];
-      const f32        x   = scene.attrib.vertices.ptr[3 * idx.vertex_index + 0];
-      const f32        y   = scene.attrib.vertices.ptr[3 * idx.vertex_index + 1];
-      const f32        z   = scene.attrib.vertices.ptr[3 * idx.vertex_index + 2];
-      const f32        u   = scene.attrib.texcoords.ptr[2 * idx.texcoord_index + 0];
-      const f32        v   = scene.attrib.texcoords.ptr[2 * idx.texcoord_index + 1];
+      const auto [vertex_index, normal_index, tex_coord_index] = mesh->indices[i];
 
-      result.indices.push(i);
+      const f32 x  = scene.attrib.vertices.ptr[3 * vertex_index + 0];
+      const f32 y  = scene.attrib.vertices.ptr[3 * vertex_index + 1];
+      const f32 z  = scene.attrib.vertices.ptr[3 * vertex_index + 2];
+      const f32 u  = scene.attrib.texcoords.ptr[2 * tex_coord_index + 0];
+      const f32 v  = scene.attrib.texcoords.ptr[2 * tex_coord_index + 1];
+      const f32 nx = scene.attrib.normals.ptr[3 * normal_index + 0];
+      const f32 ny = scene.attrib.normals.ptr[3 * normal_index + 1];
+      const f32 nz = scene.attrib.normals.ptr[3 * normal_index + 2];
+
       result.vertices.push(Vector3f::xyz(x, y, z));
+      result.normals.push(Vector3f::xyz(nx, ny, nz));
       result.tex_coords.push(Vector2f::xy(u, v));
+      result.indices.push(i);
     }
 
     tobj_scene_free_f(&scene);
     tobj_diag_free(&diag, nullptr);
     Flock::release(nullptr, ptr, size);
 
+    logger->log_inf("Loaded mesh %s", asset_path.to_string().c_str());
+
     return result;
   }
 
   Maybe<Image> AssetLoader::load_image_impl(const Filepath &asset_path) {
+    Debug::Logger *logger = Debug::Logger::get("Flock");
+
     using FileSystem::File;
-    Maybe<File> file = File::load(asset_path, FileMode::ReadOnly);
+    Maybe<File> file = File::open(asset_path, FileMode::ReadOnly);
     if (!file) {
       return {};
     }
@@ -161,6 +178,7 @@ namespace Flock::Asset {
     const usize size = file->size();
     void *      ptr  = alloc(nullptr, size);
     if (!ptr) {
+      logger->log_err("Failed to load image %s: Failed to allocate memory", asset_path.to_string().c_str());
       return {};
     }
 
@@ -177,6 +195,7 @@ namespace Flock::Asset {
     Image result;
     result.width  = x;
     result.height = y;
+    result.pixels.reserve(x * y);
     for (usize j = 0; j < static_cast<usize>(y); j++) {
       for (usize i = 0; i < static_cast<usize>(x); i++) {
         Color4u8 color{};
@@ -191,6 +210,8 @@ namespace Flock::Asset {
 
     stbi_image_free(data);
     Flock::release(nullptr, ptr, size);
+
+    logger->log_inf("Loaded image %s", asset_path.to_string().c_str());
     return result;
   }
 }

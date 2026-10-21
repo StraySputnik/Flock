@@ -126,7 +126,6 @@ namespace Flock {
 # define UNREACHABLE() PANIC()
 #endif
 
-
 #define ASSERT(c, msg)                                                           \
     do {                                                                         \
         if (!(c)) {                                                              \
