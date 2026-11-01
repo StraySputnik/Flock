@@ -16,7 +16,7 @@ namespace Flock {
     explicit WindowEvent(WindowID id) : window_id_(id) {
     }
 
-    WindowID get_window_id() const {
+    [[nodiscard]] WindowID get_window_id() const {
       return window_id_;
     }
   };
@@ -28,8 +28,6 @@ namespace Flock {
     explicit WindowClosedEvent(WindowID id) : WindowEvent(id) {
     }
   };
-
-  Vec<OwnedRef<Event>> poll_platform_events();
 
   struct FLK_API WindowConfig {
     String name   = String::from_c_str("Flock");
@@ -44,12 +42,13 @@ namespace Flock {
     virtual void resize(u16 w, u16 h) = 0;
     virtual void rename(StringSlice new_name) = 0;
 
-    virtual u16         get_width() const = 0;
-    virtual u16         get_height() const = 0;
-    virtual StringSlice get_name() const = 0;
-    virtual WindowID    get_id() const = 0;
+    [[nodiscard]] virtual u16         width() const = 0;
+    [[nodiscard]] virtual u16         height() const = 0;
+    [[nodiscard]] virtual StringSlice title() const = 0;
+    [[nodiscard]] virtual WindowID    id() const = 0;
+    [[nodiscard]] virtual bool        should_close() const = 0;
+    [[nodiscard]] virtual void *      create_wgpu_surface(void *ctx) const = 0;
 
-    virtual bool                 should_close() const = 0;
     virtual Vec<OwnedRef<Event>> consume_events(Vec<OwnedRef<Event>> &) = 0;
   };
 }

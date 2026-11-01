@@ -9,8 +9,9 @@ namespace Flock {
     }
 
     App app{};
-    app.config_ = cfg;
-    app.window_ = SDL::Window::create(cfg.window_config).move();
+    app.config_   = cfg;
+    app.window_   = SDL::Window::create(cfg.window_config).move();
+    app.renderer_ = Sokol::Renderer::create(app.window_).move();
     return app;
   }
 
@@ -29,18 +30,19 @@ namespace Flock {
   }
 
   void App::start() {
-    Debug::Logger::get("Flock")->log_inf("%s", "Starting Application...");
+    LOG_INF("%s", "Starting Application...");
   }
 
   void App::end() {
-    Debug::Logger::get("Flock")->log_inf("%s", "Terminating Application...");
+    LOG_INF("%s", "Terminating Application...");
   }
 
   void App::update() {
-    Vec<OwnedRef<Event>> events = poll_platform_events();
+    Vec<OwnedRef<Event>> events = SDL::Window::poll_events();
     window_.consume_events(events);
   }
 
   void App::render() {
+    renderer_.render({});
   }
 }

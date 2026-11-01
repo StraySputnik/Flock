@@ -46,10 +46,14 @@ add_library(
         src/debug/log.cpp
         include/time/time.hpp
         src/time/time.cpp
+        include/graphics/sokol/sokol_renderer.hpp
+        src/graphics/sokol/sokol_renderer.cpp
+        include/graphics/sokol/wgpu.hpp
+        src/graphics/sokol/wgpu.cpp
 )
 
 target_include_directories(${PROJECT_NAME} PUBLIC ${PROJECT_SOURCE_DIR}/src ${PROJECT_SOURCE_DIR}/include)
-target_compile_definitions(${PROJECT_NAME} PUBLIC FLK_SHARED_BUILD FLK_PLATFORM_SDL3)
+target_compile_definitions(${PROJECT_NAME} PUBLIC FLK_SHARED_BUILD)
 
 set(SANITIZER OFF)
 if (UNIX)
@@ -67,4 +71,4 @@ endif ()
 
 CPMAddPackage("gh:libsdl-org/SDL#release-3.4.18")
 CPMAddPackage("gh:tinyobjloader/tinyobjloader#release")
-target_link_libraries(${PROJECT_NAME} PUBLIC SDL3::SDL3 stbi tinyobjloader_c)
+target_link_libraries(${PROJECT_NAME} PUBLIC SDL3::SDL3 stbi tinyobjloader_c sokol)

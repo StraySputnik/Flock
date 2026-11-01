@@ -8,7 +8,6 @@
 #include "file_system/path.hpp"
 #include "math/color.hpp"
 #include "math/vector.hpp"
-#include "memory/ref.hpp"
 
 namespace Flock::Asset {
   using AssetID                          = u64;
@@ -22,17 +21,39 @@ namespace Flock::Asset {
     return get_asset_id(filepath.to_string().c_str());
   }
 
+  enum class AssetType : u8 {
+    Mesh,
+    Image,
+    Shader,
+  };
+
   struct FLK_API Mesh {
     Vec<Vector3f> vertices   = {};
     Vec<Vector3f> normals    = {};
     Vec<Vector2f> tex_coords = {};
     Vec<u32>      indices    = {};
+
+    static AssetType type() {
+      return AssetType::Mesh;
+    }
   };
 
   struct FLK_API Image {
     Vec<Color4u8> pixels = {}; // Left-to-right Top-to-bottom
     u32           width  = 0;
     u32           height = 0;
+
+    static AssetType type() {
+      return AssetType::Image;
+    }
+  };
+
+  struct FLK_API Shader {
+    String text = {};
+
+    static AssetType type() {
+      return AssetType::Shader;
+    }
   };
 
   template<typename T>
@@ -54,54 +75,9 @@ namespace Flock::Asset {
     }
   };
 
-  enum class AssetType : u8 {
-    None,
-    Mesh,
-    Image,
-  };
-
-  template<typename T>
-  constexpr AssetType asset_type() {
-    if constexpr (std::is_same_v<T, Mesh>) {
-      return AssetType::Mesh;
-    }
-
-    if constexpr (std::is_same_v<T, Image>) {
-      return AssetType::Image;
-    }
-
-    return AssetType::None;
-  }
-
-  constexpr usize asset_type_size(const AssetType type) {
-    switch (type) {
-      case AssetType::Mesh:
-        return sizeof(Mesh);
-      case AssetType::Image:
-        return sizeof(Image);
-      default:
-        PANIC();
-    }
-
-    UNREACHABLE();
-  }
-
-  constexpr usize asset_type_align(const AssetType type) {
-    switch (type) {
-      case AssetType::Mesh:
-        return alignof(Mesh);
-      case AssetType::Image:
-        return alignof(Image);
-      default:
-        PANIC();
-    }
-
-    UNREACHABLE();
-  }
-
   class FLK_API AssetLoader {
     struct Asset {
-      AssetType type = AssetType::None;
+      AssetType type = AssetType::Mesh;
       void *    data = nullptr;
     };
 
@@ -124,7 +100,6 @@ namespace Flock::Asset {
     ~AssetLoader();
 
     void release();
-    void set_allocator(AssetType type, Allocator *allocator);
 
     template<typename T>
     Maybe<AssetHandle<T>> load(const Filepath &asset_path) {
@@ -136,18 +111,20 @@ namespace Flock::Asset {
         data = load_mesh_impl(path);
       } else if constexpr (std::is_same_v<T, Image>) {
         data = load_image_impl(path);
+      } else if constexpr (std::is_same_v<T, Shader>) {
+        data = load_shader_impl(path);
       }
 
       if (!data) {
         return {};
       }
 
-      void *data_ptr = alloc(asset_allocators_[asset_type<T>()], sizeof(T), alignof(T));
+      void *data_ptr = alloc(asset_allocators_[T::type()], sizeof(T), alignof(T));
       ASSERT(data_ptr, "Allocation failed");
       new(data_ptr) T(data.move());
 
       const Asset asset{
-        .type = asset_type<T>(),
+        .type = T::type(),
         .data = data_ptr,
       };
 
@@ -157,23 +134,21 @@ namespace Flock::Asset {
 
     template<typename T>
     void unload(const AssetHandle<T> &asset) {
-      Debug::Logger *logger = Debug::Logger::get("Flock");
-
       if (!asset.is_valid()) {
         return;
       }
 
       const AssetID id = asset.id;
-      if (assets_[id].type != asset_type<T>()) {
+      if (assets_[id].type != T::type()) {
         return;
       }
 
       T *ptr = static_cast<T *>(assets_[id].data);
       ptr->~T();
-      Flock::release(asset_allocators_[asset_type<T>()], ptr, asset_type_size(asset_type<T>()));
+      Flock::release(asset_allocators_[T::type()], ptr, sizeof(T));
       assets_.remove(id);
 
-      logger->log_inf("Unloaded asset with ID %llu", id);
+      LOG_INF("Unloaded asset with ID %llu", id);
     }
 
     template<typename T>
@@ -189,16 +164,38 @@ namespace Flock::Asset {
       }
 
       void *data = asset->data;
-      if (asset->type != asset_type<T>()) {
+      if (asset->type != T::type()) {
         return nullptr;
       }
 
       return static_cast<T *>(data);
     }
 
+    template<typename T>
+    void set_allocator(Allocator *allocator) {
+      for (auto &[id, asset]: assets_) {
+        if (asset.type != T::type()) {
+          continue;
+        }
+
+        asset.data = realloc_to(
+          asset_allocators_[asset.type],
+          allocator, asset.data,
+          sizeof(T),
+          sizeof(T),
+          alignof(T)
+        );
+
+        ASSERT(asset.data, "Allocation failed");
+      }
+
+      asset_allocators_[T::type()] = allocator;
+    }
+
   private:
-    static Maybe<Mesh>  load_mesh_impl(const Filepath &asset_path);
-    static Maybe<Image> load_image_impl(const Filepath &asset_path);
+    static Maybe<Mesh>   load_mesh_impl(const Filepath &asset_path);
+    static Maybe<Image>  load_image_impl(const Filepath &asset_path);
+    static Maybe<Shader> load_shader_impl(const Filepath &asset_path);
   };
 }
 

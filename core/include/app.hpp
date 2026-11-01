@@ -2,6 +2,7 @@
 
 #include "common.hpp"
 #include "ecs/world.hpp"
+#include "graphics/sokol/sokol_renderer.hpp"
 #include "platform/window.hpp"
 #include "platform/sdl/sdl_window.hpp"
 
@@ -11,9 +12,10 @@ namespace Flock {
   };
 
   class FLK_API App {
-    AppConfig   config_        = {};
-    ECS::World  current_world_ = {};
-    SDL::Window window_        = {};
+    AppConfig       config_        = {};
+    ECS::World      current_world_ = {};
+    SDL::Window     window_        = {};
+    Sokol::Renderer renderer_      = {};
 
   public:
     static App create(const AppConfig &cfg = {});

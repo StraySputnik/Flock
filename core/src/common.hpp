@@ -60,6 +60,13 @@ static constexpr bool MSVC = true;
 static constexpr bool MSVC = false;
 #endif
 
+#ifdef NDEBUG
+static constexpr bool DEBUG = false;
+#else
+# define PLATFORM_DEBUG 1
+static constexpr bool DEBUG = true;
+#endif
+
 namespace Flock {
   using u8  = uint8_t;
   using u16 = uint16_t;
@@ -133,3 +140,16 @@ namespace Flock {
             PANIC();                                                             \
         }                                                                        \
     } while (0)
+
+#define LOG_INF(fmt, ...) Flock::Debug::Logger::get_or_create("Flock").log_inf(fmt, __VA_ARGS__)
+#define LOG_WRN(fmt, ...) Flock::Debug::Logger::get_or_create("Flock").log_wrn(fmt, __VA_ARGS__)
+#define LOG_ERR(fmt, ...) Flock::Debug::Logger::get_or_create("Flock").log_err(fmt, __VA_ARGS__)
+#define LOG_FTL(fmt, ...) Flock::Debug::Logger::get_or_create("Flock").log_ftl(fmt, __VA_ARGS__)
+
+#ifdef PLATFORM_DEBUG
+# define LOG_TRC(fmt, ...) Flock::Debug::Logger::get_or_create("Flock").log_trc(fmt, __VA_ARGS__)
+# define LOG_DBG(fmt, ...) Flock::Debug::Logger::get_or_create("Flock").log_dbg(fmt, __VA_ARGS__)
+#else
+# define LOG_TRC(fmt, ...)
+# define LOG_DBG(fmt, ...)
+#endif

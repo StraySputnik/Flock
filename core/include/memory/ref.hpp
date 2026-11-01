@@ -81,7 +81,7 @@ namespace Flock {
       }
 
       ptr_->~T();
-      allocator_->release(ptr_, sizeof(T));
+      Flock::release(allocator_, ptr_, sizeof(T));
       ptr_ = nullptr;
     }
 
@@ -221,7 +221,7 @@ namespace Flock {
       --ref_counts_[ptr_];
       if (ref_counts_[ptr_] == 0) {
         ptr_->~T();
-        allocator_->release(ptr_, sizeof(T));
+        Flock::release(allocator_, ptr_, sizeof(T));
       }
     }
 

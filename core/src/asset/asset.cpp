@@ -7,9 +7,9 @@
 
 #include "stbi.h"
 
+#include "debug/log.hpp"
 #include "file_system/directory.hpp"
 #include "file_system/file.hpp"
-#include "debug/log.hpp"
 
 namespace Flock::Asset {
   Maybe<AssetLoader> AssetLoader::create(const char *asset_directory) {
@@ -17,12 +17,10 @@ namespace Flock::Asset {
   }
 
   Maybe<AssetLoader> AssetLoader::create(const Filepath &asset_directory) {
-    Debug::Logger *logger = Debug::Logger::get("Flock");
-
     if (!FileSystem::Directory::exists(asset_directory)) {
-      logger->log_inf("Directory %s does not exist, creating directory", asset_directory.to_string().c_str());
+      LOG_INF("Directory %s does not exist, creating directory", asset_directory.to_string().c_str());
       if (!FileSystem::Directory::create(asset_directory)) {
-        logger->log_err("Failed to create asset directory %s", asset_directory.to_string().c_str());
+        LOG_ERR("Failed to create asset directory %s", asset_directory.to_string().c_str());
         return {};
       }
     }
@@ -85,29 +83,7 @@ namespace Flock::Asset {
     asset_dir_ = {};
   }
 
-  void AssetLoader::set_allocator(const AssetType type, Allocator *allocator) {
-    for (auto &[id, asset]: assets_) {
-      if (asset.type != type) {
-        continue;
-      }
-
-      asset.data = realloc_to(
-        asset_allocators_[asset.type],
-        allocator, asset.data,
-        asset_type_size(asset.type),
-        asset_type_size(asset.type),
-        asset_type_align(asset.type)
-      );
-
-      ASSERT(asset.data, "Allocation failed");
-    }
-
-    asset_allocators_[type] = allocator;
-  }
-
   Maybe<Mesh> AssetLoader::load_mesh_impl(const Filepath &asset_path) {
-    Debug::Logger *logger = Debug::Logger::get("Flock");
-
     if (asset_path.extension() != "obj") {
       return {};
     }
@@ -121,7 +97,7 @@ namespace Flock::Asset {
 
     Maybe<File> file = File::open(asset_path, FileMode::ReadOnly);
     if (!file) {
-      logger->log_err("Failed to load mesh %s: Failed to open file", asset_path.to_string().c_str());
+      LOG_ERR("Failed to load mesh %s: Failed to open file", asset_path.to_string().c_str());
       return {};
     }
 
@@ -130,7 +106,7 @@ namespace Flock::Asset {
     file->read_exact(ptr, size, 0);
     if (tobj_load_obj_from_memory_f(&scene, ptr, size, &cfg, &diag) != TOBJ_OK) {
       if (diag.err) {
-        logger->log_err("Failed to load mesh %s: %s", asset_path.to_string().c_str(), diag.err);
+        LOG_ERR("Failed to load mesh %s: %s", asset_path.to_string().c_str(), diag.err);
       }
 
       return {};
@@ -161,14 +137,12 @@ namespace Flock::Asset {
     tobj_diag_free(&diag, nullptr);
     Flock::release(nullptr, ptr, size);
 
-    logger->log_inf("Loaded mesh %s", asset_path.to_string().c_str());
+    LOG_INF("Loaded mesh %s", asset_path.to_string().c_str());
 
     return result;
   }
 
   Maybe<Image> AssetLoader::load_image_impl(const Filepath &asset_path) {
-    Debug::Logger *logger = Debug::Logger::get("Flock");
-
     using FileSystem::File;
     Maybe<File> file = File::open(asset_path, FileMode::ReadOnly);
     if (!file) {
@@ -178,7 +152,7 @@ namespace Flock::Asset {
     const usize size = file->size();
     void *      ptr  = alloc(nullptr, size);
     if (!ptr) {
-      logger->log_err("Failed to load image %s: Failed to allocate memory", asset_path.to_string().c_str());
+      LOG_ERR("Failed to load image %s: Failed to allocate memory", asset_path.to_string().c_str());
       return {};
     }
 
@@ -211,7 +185,27 @@ namespace Flock::Asset {
     stbi_image_free(data);
     Flock::release(nullptr, ptr, size);
 
-    logger->log_inf("Loaded image %s", asset_path.to_string().c_str());
+    LOG_INF("Loaded image %s", asset_path.to_string().c_str());
+    return result;
+  }
+
+  Maybe<Shader> AssetLoader::load_shader_impl(const Filepath &asset_path) {
+    using FileSystem::File;
+    Maybe<File> file = File::open(asset_path, FileMode::ReadOnly);
+    if (!file) {
+      return {};
+    }
+
+    Maybe<String> string = file->to_string();
+    if (!string) {
+      LOG_ERR("Failed to load shader %s: Failed to allocate memory", asset_path.to_string().c_str());
+      return {};
+    }
+
+    Shader result{};
+    result.text = string.move();
+
+    LOG_INF("Loaded shader %s", asset_path.to_string().c_str());
     return result;
   }
 }
