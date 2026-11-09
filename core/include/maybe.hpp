@@ -35,6 +35,14 @@ namespace Flock {
       return value_;
     }
 
+    T get_or_default() const {
+      if (has_value_) {
+        return value_;
+      }
+
+      return {};
+    }
+
     T &&move() {
       ASSERT(has_value_, "Get on empty Maybe");
       return std::move(value_);

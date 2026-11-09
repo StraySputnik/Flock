@@ -8,6 +8,12 @@
 namespace Flock {
   class String;
 
+  bool is_lowercase(char ch);
+  bool is_uppercase(char ch);
+  bool is_whitespace(char ch);
+  bool is_alpha(char ch);
+  bool is_numeric(char ch);
+  bool is_alphanum(char ch);
   char to_lowercase(char ch);
   char to_uppercase(char ch);
 
@@ -29,11 +35,46 @@ namespace Flock {
 
     [[nodiscard]] String to_string() const;
 
+    bool operator==(const char *other) const;
+    bool operator!=(const char *other) const;
     bool operator==(const StringSlice &other) const;
     bool operator!=(const StringSlice &other) const;
 
     [[nodiscard]] const char *begin() const;
     [[nodiscard]] const char *end() const;
+
+    [[nodiscard]] Vec<StringSlice> split(char delim) const;
+    [[nodiscard]] Vec<StringSlice> split_by_whitespace() const;
+
+    template<typename Pred>
+    [[nodiscard]] Vec<StringSlice> split_by(Pred &&pred) const {
+      Vec<StringSlice> parts = {};
+      const char *     ptr   = ptr_;
+      usize            len   = 0;
+
+      for (usize i = 0; i < len_; i++) {
+        len++;
+        if (!pred(ptr_[i])) {
+          continue;
+        }
+
+        if (len > 1) {
+          parts.push(create(ptr, len - 1));
+        }
+
+        ptr += len;
+        len = 0;
+      }
+
+      parts.push(create(ptr, len));
+      return parts;
+    }
+
+    [[nodiscard]] Maybe<bool> to_bool() const;
+    [[nodiscard]] Maybe<i32>  to_i32() const;
+    [[nodiscard]] Maybe<f32>  to_f32() const;
+    [[nodiscard]] Maybe<i64>  to_i64() const;
+    [[nodiscard]] Maybe<f64>  to_f64() const;
   };
 
   class FLK_API String {
@@ -43,6 +84,9 @@ namespace Flock {
     static String empty();
     static String with_capacity(usize capacity);
     static String from_c_str(const char *c_str);
+
+    String() = default;
+    String(const char *c_str);
 
     void release();
 
@@ -130,7 +174,26 @@ namespace Flock {
     char *                    end();
     [[nodiscard]] const char *begin() const;
     [[nodiscard]] const char *end() const;
+
+    [[nodiscard]] Vec<StringSlice> split(char delim) const;
+    [[nodiscard]] Vec<StringSlice> split_by_whitespace() const;
+
+    template<typename Pred>
+    [[nodiscard]] Vec<StringSlice> split_by(Pred &&pred) const {
+      return as_slice().split_by(std::forward<Pred>(pred));
+    }
+
+    [[nodiscard]] Maybe<bool> to_bool() const;
+    [[nodiscard]] Maybe<i32>  to_i32() const;
+    [[nodiscard]] Maybe<f32>  to_f32() const;
+    [[nodiscard]] Maybe<i64>  to_i64() const;
+    [[nodiscard]] Maybe<f64>  to_f64() const;
   };
 
   FLK_API Hash hash(const String &string);
+
+  FLK_API String to_string(i32 value);
+  FLK_API String to_string(f32 value);
+  FLK_API String to_string(i64 value);
+  FLK_API String to_string(f64 value);
 }

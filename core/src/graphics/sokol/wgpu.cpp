@@ -232,19 +232,32 @@ namespace Flock::Graphics::Sokol::WGPU {
   Texture create_msaa_target(const Context &ctx, const u32 width, const u32 height, const usize sample_count) {
     ASSERT(sample_count > 1, "Invalid sample count");
 
-    WGPUTextureView       msaa_view = nullptr;
-    WGPUTexture           msaa_tex  = nullptr;
-    WGPUTextureDescriptor td        = {};
+    WGPUTextureDescriptor td = {};
+    td.usage                 = WGPUTextureUsage_RenderAttachment;
+    td.dimension             = WGPUTextureDimension_2D;
+    td.size                  = {.width = width, .height = height, .depthOrArrayLayers = 1};
+    td.format                = static_cast<WGPUTextureFormat>(ctx.color_format);
+    td.mipLevelCount         = 1;
+    td.sampleCount           = sample_count;
 
-    td.usage         = WGPUTextureUsage_RenderAttachment;
-    td.dimension     = WGPUTextureDimension_2D;
-    td.size          = {.width = width, .height = height, .depthOrArrayLayers = 1};
-    td.format        = static_cast<WGPUTextureFormat>(ctx.color_format);
-    td.mipLevelCount = 1;
-    td.sampleCount   = sample_count;
-    msaa_tex         = wgpuDeviceCreateTexture(static_cast<WGPUDevice>(ctx.device), &td);
-    msaa_view        = wgpuTextureCreateView(msaa_tex, nullptr);
+    WGPUTexture     msaa_tex  = wgpuDeviceCreateTexture(static_cast<WGPUDevice>(ctx.device), &td);
+    WGPUTextureView msaa_view = wgpuTextureCreateView(msaa_tex, nullptr);
 
     return Texture{.texture = msaa_tex, .view = msaa_view};
+  }
+
+  Texture create_depth_target(const Context &ctx, const u32 width, const u32 height, const usize sample_count) {
+    WGPUTextureDescriptor td = {};
+    td.usage                 = WGPUTextureUsage_RenderAttachment;
+    td.dimension             = WGPUTextureDimension_2D;
+    td.size                  = {.width = width, .height = height, .depthOrArrayLayers = 1};
+    td.format                = WGPUTextureFormat_Depth32Float;
+    td.mipLevelCount         = 1;
+    td.sampleCount           = sample_count;
+
+    WGPUTexture     tex  = wgpuDeviceCreateTexture(static_cast<WGPUDevice>(ctx.device), &td);
+    WGPUTextureView view = wgpuTextureCreateView(tex, nullptr);
+
+    return Texture{.texture = tex, .view = view};
   }
 }

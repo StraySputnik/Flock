@@ -1,11 +1,10 @@
 #pragma once
 
 #include <algorithm>
-#include <cstdlib>
-#include <cstdint>
-#include <cstddef>
-#include <cstdio>
 #include <csignal>
+#include <cstddef>
+#include <cstdint>
+#include <cstdio>
 
 #ifdef _WIN32
 static constexpr bool WINDOWS = true;
@@ -116,14 +115,7 @@ namespace Flock {
 # endif
 #endif
 
-#if defined(PLATFORM_MSVC)
-# include <intrin.h>
-# define PANIC() __debugbreak()
-#elif defined(__has_builtin) && __has_builtin(__builtin_debugtrap)
-# define PANIC() __builtin_debugtrap()
-#else
-# define PANIC() raise(SIGTRAP)
-#endif
+#define PANIC() abort()
 
 #if defined(PLATFORM_GCC) || defined(PLATFORM_CLANG)
 # define UNREACHABLE() __builtin_unreachable()
@@ -140,6 +132,8 @@ namespace Flock {
             PANIC();                                                             \
         }                                                                        \
     } while (0)
+
+#define UNIMPLEMENTED() ASSERT(false, "Unimplemented"); UNREACHABLE()
 
 #define LOG_INF(fmt, ...) Flock::Debug::Logger::get_or_create("Flock").log_inf(fmt, __VA_ARGS__)
 #define LOG_WRN(fmt, ...) Flock::Debug::Logger::get_or_create("Flock").log_wrn(fmt, __VA_ARGS__)

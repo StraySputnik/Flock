@@ -6,7 +6,7 @@
 #include "collect/string.hpp"
 #include "debug/log.hpp"
 #include "file_system/path.hpp"
-#include "math/color.hpp"
+#include "graphics/graphics.hpp"
 #include "math/vector.hpp"
 
 namespace Flock::Asset {
@@ -24,37 +24,26 @@ namespace Flock::Asset {
   enum class AssetType : u8 {
     Mesh,
     Image,
-    Shader,
+    Pipeline,
+    Material,
   };
 
-  struct FLK_API Mesh {
-    Vec<Vector3f> vertices   = {};
-    Vec<Vector3f> normals    = {};
-    Vec<Vector2f> tex_coords = {};
-    Vec<u32>      indices    = {};
-
-    static AssetType type() {
+  template<typename T>
+  AssetType asset_type_of() {
+    if constexpr (std::is_same_v<T, Mesh>) {
       return AssetType::Mesh;
-    }
-  };
-
-  struct FLK_API Image {
-    Vec<Color4u8> pixels = {}; // Left-to-right Top-to-bottom
-    u32           width  = 0;
-    u32           height = 0;
-
-    static AssetType type() {
+    } else if constexpr (std::is_same_v<T, Image>) {
       return AssetType::Image;
+    } else if constexpr (std::is_same_v<T, Pipeline>) {
+      return AssetType::Pipeline;
+    } else if constexpr (std::is_same_v<T, Material>) {
+      return AssetType::Material;
+    } else {
+      static_assert(false);
     }
-  };
 
-  struct FLK_API Shader {
-    String text = {};
-
-    static AssetType type() {
-      return AssetType::Shader;
-    }
-  };
+    UNREACHABLE();
+  }
 
   template<typename T>
   struct AssetHandle {
@@ -108,23 +97,25 @@ namespace Flock::Asset {
       Filepath path = asset_dir_;
       path.join(asset_path);
       if constexpr (std::is_same_v<T, Mesh>) {
-        data = load_mesh_impl(path);
+        data = std::move(load_mesh_impl(path));
       } else if constexpr (std::is_same_v<T, Image>) {
-        data = load_image_impl(path);
-      } else if constexpr (std::is_same_v<T, Shader>) {
-        data = load_shader_impl(path);
+        data = std::move(load_image_impl(path));
+      } else if constexpr (std::is_same_v<T, Pipeline>) {
+        data = std::move(load_shader_impl(path));
+      } else if constexpr (std::is_same_v<T, Material>) {
+        data = std::move(load_material_impl(path));
       }
 
       if (!data) {
         return {};
       }
 
-      void *data_ptr = alloc(asset_allocators_[T::type()], sizeof(T), alignof(T));
+      void *data_ptr = alloc(asset_allocators_[asset_type_of<T>()], sizeof(T), alignof(T));
       ASSERT(data_ptr, "Allocation failed");
       new(data_ptr) T(data.move());
 
       const Asset asset{
-        .type = T::type(),
+        .type = asset_type_of<T>(),
         .data = data_ptr,
       };
 
@@ -139,13 +130,13 @@ namespace Flock::Asset {
       }
 
       const AssetID id = asset.id;
-      if (assets_[id].type != T::type()) {
+      if (assets_[id].type != asset_type_of<T>()) {
         return;
       }
 
       T *ptr = static_cast<T *>(assets_[id].data);
       ptr->~T();
-      Flock::release(asset_allocators_[T::type()], ptr, sizeof(T));
+      Flock::release(asset_allocators_[asset_type_of<T>()], ptr, sizeof(T));
       assets_.remove(id);
 
       LOG_INF("Unloaded asset with ID %llu", id);
@@ -164,7 +155,7 @@ namespace Flock::Asset {
       }
 
       void *data = asset->data;
-      if (asset->type != T::type()) {
+      if (asset->type != asset_type_of<T>()) {
         return nullptr;
       }
 
@@ -173,8 +164,8 @@ namespace Flock::Asset {
 
     template<typename T>
     void set_allocator(Allocator *allocator) {
-      for (auto &[id, asset]: assets_) {
-        if (asset.type != T::type()) {
+      for (auto &[asset_id, asset]: assets_) {
+        if (asset.type != asset_type_of<T>()) {
           continue;
         }
 
@@ -189,13 +180,14 @@ namespace Flock::Asset {
         ASSERT(asset.data, "Allocation failed");
       }
 
-      asset_allocators_[T::type()] = allocator;
+      asset_allocators_[asset_type_of<T>()] = allocator;
     }
 
   private:
-    static Maybe<Mesh>   load_mesh_impl(const Filepath &asset_path);
-    static Maybe<Image>  load_image_impl(const Filepath &asset_path);
-    static Maybe<Shader> load_shader_impl(const Filepath &asset_path);
+    static Maybe<Mesh>     load_mesh_impl(const Filepath &asset_path);
+    static Maybe<Image>    load_image_impl(const Filepath &asset_path);
+    static Maybe<Pipeline> load_shader_impl(const Filepath &asset_path);
+    static Maybe<Material> load_material_impl(const Filepath &asset_path);
   };
 }
 

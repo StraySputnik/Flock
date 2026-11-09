@@ -99,8 +99,8 @@ namespace Flock {
     return allocator->release(ptr, size);
   }
 
-  Maybe<BumpAllocator> BumpAllocator::create(usize size) {
-    void *allocation = sys_alloc(size);
+  Maybe<BumpAllocator> BumpAllocator::create(const usize size) {
+    void *allocation = Flock::alloc(get_global(), size);
     if (!allocation) {
       return {};
     }
@@ -142,7 +142,7 @@ namespace Flock {
   }
 
   BumpAllocator::~BumpAllocator() {
-    clear();
+    BumpAllocator::clear();
   }
 
   void *BumpAllocator::alloc(usize size, usize align) {

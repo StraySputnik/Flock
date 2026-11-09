@@ -50,6 +50,13 @@ add_library(
         src/graphics/sokol/sokol_renderer.cpp
         include/graphics/sokol/wgpu.hpp
         src/graphics/sokol/wgpu.cpp
+        include/graphics/graphics.hpp
+        src/graphics/graphics.cpp
+        include/json/json.hpp
+        src/json/json.cpp
+        include/serial/serial.hpp
+        include/serial/json/json_serial.hpp
+        src/serial/json/json_serial.cpp
 )
 
 target_include_directories(${PROJECT_NAME} PUBLIC ${PROJECT_SOURCE_DIR}/src ${PROJECT_SOURCE_DIR}/include)

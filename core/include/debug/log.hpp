@@ -140,10 +140,6 @@ namespace Flock::Debug {
         return;
       }
 
-      if (config_.ansi && level == Info) {
-        print("%s", ANSI_BLUE);
-      }
-
       if (config_.ansi && level == Warning) {
         print("%s", ANSI_YELLOW);
       }
@@ -160,7 +156,7 @@ namespace Flock::Debug {
       log.push_str(fmt);
       println(log.c_str(), args...);
 
-      if (config_.ansi && level & (Info | Warning | Error | Fatal)) {
+      if (config_.ansi && level & (Warning | Error | Fatal)) {
         print("%s", ANSI_RESET);
       }
     }

@@ -41,7 +41,9 @@ namespace Flock {
 
     Vec() = default;
 
-    Vec(const Vec &other) requires std::is_copy_constructible_v<T> {
+    Vec(const Vec &other) {
+      static_assert(std::is_copy_constructible_v<T>, "T must be copy-constructible");
+
       allocator_ = Allocator::get_global();
       len_       = other.len_;
       cap_       = other.cap_;
@@ -66,7 +68,9 @@ namespace Flock {
       other.ptr_       = nullptr;
     }
 
-    Vec &operator=(const Vec &other) requires std::is_copy_assignable_v<T> {
+    Vec &operator=(const Vec &other) {
+      static_assert(std::is_copy_assignable_v<T>, "T must be copy-assignable");
+
       if (this == &other) {
         return *this;
       }
@@ -153,7 +157,7 @@ namespace Flock {
       }
 
       const usize new_cap = len_ + additional;
-      ptr_ = static_cast<T *>(allocator_->realloc(ptr_, cap_ * sizeof(T), new_cap * sizeof(T), alignof(T)));
+      ptr_ = static_cast<T *>(realloc(allocator_, ptr_, cap_ * sizeof(T), new_cap * sizeof(T), alignof(T)));
       cap_ = new_cap;
 
       ASSERT(ptr_, "Allocation failed");
@@ -166,7 +170,7 @@ namespace Flock {
 
       const usize new_cap = min_capacity < len_ ? len_ : min_capacity;
 
-      ptr_ = static_cast<T *>(allocator_->realloc(ptr_, cap_ * sizeof(T), new_cap * sizeof(T), alignof(T)));
+      ptr_ = static_cast<T *>(realloc(allocator_, ptr_, cap_ * sizeof(T), new_cap * sizeof(T), alignof(T)));
       cap_ = min_capacity;
     }
 

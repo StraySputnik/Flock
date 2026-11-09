@@ -1,10 +1,36 @@
 #include "collect/string.hpp"
 
+#include <cctype>
+#include <cerrno>
 #include <cstring>
 
 namespace Flock {
+  bool is_lowercase(char ch) {
+    return ch >= 'a' && ch <= 'z';
+  }
+
+  bool is_uppercase(char ch) {
+    return ch >= 'A' && ch <= 'Z';
+  }
+
+  bool is_whitespace(char ch) {
+    return isspace(ch);
+  }
+
+  bool is_alpha(char ch) {
+    return (ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z');
+  }
+
+  bool is_numeric(char ch) {
+    return ch >= '0' && ch <= '9';
+  }
+
+  bool is_alphanum(char ch) {
+    return is_alpha(ch) || is_numeric(ch);
+  }
+
   char to_lowercase(const char ch) {
-    if (ch >= 'A' && ch <= 'Z') {
+    if (is_uppercase(ch)) {
       return static_cast<char>(static_cast<i32>(ch) + 'a' - 'A');
     }
 
@@ -12,7 +38,7 @@ namespace Flock {
   }
 
   char to_uppercase(const char ch) {
-    if (ch >= 'a' && ch <= 'z') {
+    if (is_lowercase(ch)) {
       return static_cast<char>(static_cast<i32>(ch) + 'A' - 'z');
     }
 
@@ -71,6 +97,25 @@ namespace Flock {
     return str;
   }
 
+  bool StringSlice::operator==(const char *other) const {
+    const usize len = strlen(other);
+    if (len_ != len) {
+      return false;
+    }
+
+    for (usize i = 0; i < len_; i++) {
+      if (ptr_[i] != other[i]) {
+        return false;
+      }
+    }
+
+    return true;
+  }
+
+  bool StringSlice::operator!=(const char *other) const {
+    return !(*this == other);
+  }
+
   bool StringSlice::operator==(const StringSlice &other) const {
     if (len_ != other.len_) {
       return false;
@@ -97,6 +142,92 @@ namespace Flock {
     return ptr_ + len_;
   }
 
+  Vec<StringSlice> StringSlice::split(char delim) const {
+    return split_by([&](char c) { return c == delim; });
+  }
+
+  Vec<StringSlice> StringSlice::split_by_whitespace() const {
+    return split_by(is_whitespace);
+  }
+
+  Maybe<bool> StringSlice::to_bool() const {
+    if (*this == "true") {
+      return true;
+    }
+    if (*this == "false") {
+      return false;
+    }
+
+    return {};
+  }
+
+  Maybe<i32> StringSlice::to_i32() const {
+    Maybe out = to_i64();
+    if (out) {
+      return static_cast<i32>(out.get());
+    }
+
+    return {};
+  }
+
+  Maybe<f32> StringSlice::to_f32() const {
+    Maybe out = to_f64();
+    if (out) {
+      return static_cast<f32>(out.get());
+    }
+
+    return {};
+  }
+
+  Maybe<i64> StringSlice::to_i64() const {
+    char *end;
+
+    i32 base = 10;
+    if (len_ > 2 && ptr_[0] == '0' && to_lowercase(ptr_[1]) == 'x') {
+      base = 16;
+    }
+    if (len_ > 2 && ptr_[0] == '0' && to_lowercase(ptr_[1]) == 'o') {
+      base = 8;
+    }
+    if (len_ > 2 && ptr_[0] == '0' && to_lowercase(ptr_[1]) == 'b') {
+      base = 2;
+    }
+
+    errno   = 0;
+    i64 val = strtoll(begin(), &end, base);
+
+    if (end == begin()) {
+      return {};
+    }
+    if (*end != '\0') {
+      return {};
+    }
+    if (errno == ERANGE) {
+      return {};
+    }
+
+    return val;
+  }
+
+  Maybe<f64> StringSlice::to_f64() const {
+    char *end;
+
+    errno   = 0;
+    f64 val = strtod(begin(), &end);
+
+    if (end == begin()) {
+      return {};
+    }
+    if (*end != '\0') {
+      return {};
+    }
+    if (errno == ERANGE) {
+      return {};
+    }
+
+    return val;
+  }
+
   String String::empty() {
     String string{};
     string.chars_ = Vec<char>::with_capacity(1);
@@ -112,17 +243,18 @@ namespace Flock {
   }
 
   String String::from_c_str(const char *c_str) {
-    const usize len = strlen(c_str);
+    return String{c_str};
+  }
 
-    String string{};
-    string.chars_ = Vec<char>::with_capacity(len + 1);
+  String::String(const char *c_str) {
+    const usize len = strlen(c_str);
+    chars_          = Vec<char>::with_capacity(len + 1);
 
     for (usize i = 0; i < len; i++) {
-      string.chars_.push(c_str[i]);
+      chars_.push(c_str[i]);
     }
-    string.chars_.push('\0');
 
-    return string;
+    chars_.push('\0');
   }
 
   void String::release() {
@@ -146,10 +278,18 @@ namespace Flock {
   }
 
   usize String::len() const {
+    if (chars_.len() == 0) {
+      return 0;
+    }
+
     return chars_.len() - 1;
   }
 
   usize String::capacity() const {
+    if (chars_.capacity() == 0) {
+      return 0;
+    }
+
     return chars_.capacity() - 1;
   }
 
@@ -540,7 +680,76 @@ namespace Flock {
     return chars_.begin() + len();
   }
 
+  Vec<StringSlice> String::split(char delim) const {
+    return as_slice().split(delim);
+  }
+
+  Vec<StringSlice> String::split_by_whitespace() const {
+    return as_slice().split_by_whitespace();
+  }
+
+  Maybe<bool> String::to_bool() const {
+    return as_slice().to_bool();
+  }
+
+  Maybe<i32> String::to_i32() const {
+    return as_slice().to_i32();
+  }
+
+  Maybe<f32> String::to_f32() const {
+    return as_slice().to_f32();
+  }
+
+  Maybe<i64> String::to_i64() const {
+    return as_slice().to_i64();
+  }
+
+  Maybe<f64> String::to_f64() const {
+    return as_slice().to_f64();
+  }
+
   Hash hash(const String &string) {
     return hash(string.first(), string.len());
+  }
+
+  static void ensure_decimal(char *buf, size_t cap) {
+    for (const char *p = buf; *p; ++p) {
+      if (*p == '.' || *p == 'e' || *p == 'E' || *p == 'n' || *p == 'N' || *p == 'i' || *p == 'I') {
+        return;
+      }
+    }
+
+    const usize len = strlen(buf);
+    if (len + 2 < cap) {
+      buf[len]     = '.';
+      buf[len + 1] = '0';
+      buf[len + 2] = '\0';
+    }
+  }
+
+  String to_string(i32 value) {
+    char buf[11] = {};
+    snprintf(buf, 11, "%i", value);
+    return String::from_c_str(buf);
+  }
+
+  String to_string(f32 value) {
+    char buf[17] = {};
+    snprintf(buf, 17, "%.9g", value);
+    ensure_decimal(buf, sizeof(buf));
+    return String::from_c_str(buf);
+  }
+
+  String to_string(i64 value) {
+    char buf[20] = {};
+    snprintf(buf, 20, "%li", value);
+    return String::from_c_str(buf);
+  }
+
+  String to_string(f64 value) {
+    char buf[26] = {};
+    snprintf(buf, 26, "%.17g", value);
+    ensure_decimal(buf, sizeof(buf));
+    return String::from_c_str(buf);
   }
 }

@@ -1,0 +1,7 @@
+{
+  "pipeline": "shader.wgsl",
+  "uniforms": {
+    "float": 25.6,
+    "int": 4
+  }
+}

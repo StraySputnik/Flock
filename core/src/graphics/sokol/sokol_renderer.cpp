@@ -2,6 +2,7 @@
 
 #include <sokol_gfx.h>
 
+#include "debug/log.hpp"
 #include "webgpu/webgpu.h"
 
 namespace Flock::Graphics {
@@ -57,7 +58,7 @@ namespace Flock::Graphics {
         .environment = {
           .defaults = {
             .color_format = wgpu_to_sg_format(s_ctx_.color_format),
-            .depth_format = SG_PIXELFORMAT_NONE,
+            .depth_format = SG_PIXELFORMAT_DEPTH,
             .sample_count = config.sample_count,
           },
           .wgpu = {.device = s_ctx_.device},
@@ -70,12 +71,13 @@ namespace Flock::Graphics {
     const WGPU::Surface surface = create_surface(s_ctx_, window);
 
     Renderer renderer{};
-    renderer.config       = config;
+    renderer.config_      = config;
     renderer.window_      = &window;
     renderer.surface_     = surface;
     renderer.msaa_target_ = config.sample_count > 1
                               ? WGPU::create_msaa_target(s_ctx_, window.width(), window.height(), config.sample_count)
                               : WGPU::Texture{};
+    renderer.depth_target_   = WGPU::create_depth_target(s_ctx_, window.width(), window.height(), config.sample_count);
     renderer.surface_width_  = window.width();
     renderer.surface_height_ = window.height();
 
@@ -84,17 +86,19 @@ namespace Flock::Graphics {
   }
 
   Sokol::Renderer::Renderer(Renderer &&other) noexcept {
-    config          = other.config;
+    config_         = other.config_;
     window_         = other.window_;
     surface_        = other.surface_;
     msaa_target_    = other.msaa_target_;
+    depth_target_   = other.depth_target_;
     surface_width_  = other.surface_width_;
     surface_height_ = other.surface_height_;
 
-    other.config          = {};
+    other.config_         = {};
     other.window_         = nullptr;
     other.surface_        = {};
     other.msaa_target_    = {};
+    other.depth_target_   = {};
     other.surface_width_  = 0;
     other.surface_height_ = 0;
   }
@@ -106,17 +110,19 @@ namespace Flock::Graphics {
 
     release();
 
-    config          = other.config;
+    config_         = other.config_;
     window_         = other.window_;
     surface_        = other.surface_;
     msaa_target_    = other.msaa_target_;
+    depth_target_   = other.depth_target_;
     surface_width_  = other.surface_width_;
     surface_height_ = other.surface_height_;
 
-    other.config          = {};
+    other.config_         = {};
     other.window_         = nullptr;
     other.surface_        = {};
     other.msaa_target_    = {};
+    other.depth_target_   = {};
     other.surface_width_  = 0;
     other.surface_height_ = 0;
 
@@ -133,6 +139,7 @@ namespace Flock::Graphics {
     }
 
     WGPU::release_texture(msaa_target_);
+    WGPU::release_texture(depth_target_);
     WGPU::release_surface(surface_);
 
     s_renderer_count_--;
@@ -147,50 +154,8 @@ namespace Flock::Graphics {
     return window_;
   }
 
-  GPUMesh Sokol::Renderer::upload_mesh(const Mesh &mesh) {
-    const sg_buffer_desc vert_desc{
-      .data = {.ptr = mesh.vertices.ptr(), .size = mesh.vertices.len() * sizeof(Vector3f)},
-    };
-
-    const sg_buffer_desc norm_desc{
-      .data = {.ptr = mesh.normals.ptr(), .size = mesh.normals.len() * sizeof(Vector3f)},
-    };
-
-    const sg_buffer_desc texcoord_desc{
-      .data = {.ptr = mesh.tex_coords.ptr(), .size = mesh.tex_coords.len() * sizeof(Vector2f)},
-    };
-
-    const sg_buffer_desc idx_desc{
-      .data = {.ptr = mesh.indices.ptr(), .size = mesh.indices.len() * sizeof(u32)},
-    };
-
-    sg_buffer vert_buf     = sg_make_buffer(&vert_desc);
-    sg_buffer norm_buf     = sg_make_buffer(&norm_desc);
-    sg_buffer texcoord_buf = sg_make_buffer(&texcoord_desc);
-    sg_buffer idx_buf      = sg_make_buffer(&idx_desc);
-
-    return GPUMesh{
-      .vert_buf_id     = vert_buf.id,
-      .norm_buf_id     = norm_buf.id,
-      .texcoord_buf_id = texcoord_buf.id,
-      .idx_buf_id      = idx_buf.id,
-    };
-  }
-
-  GPUImage2D Sokol::Renderer::upload_texture(const Image &image) {
-    const sg_image_desc img_desc{
-      .type        = SG_IMAGETYPE_2D,
-      .width       = static_cast<i32>(image.width),
-      .height      = static_cast<i32>(image.height),
-      .num_mipmaps = 1,
-      .data        = {sg_range{.ptr = image.pixels.ptr(), .size = image.pixels.len() * sizeof(Color4u8)}},
-    };
-
-    sg_image img = sg_make_image(&img_desc);
-
-    return GPUImage2D{
-      .id = img.id,
-    };
+  void Sokol::Renderer::configure(const RenderConfig &config) {
+    config_ = config;
   }
 
   void Sokol::Renderer::render(const RenderScene &scene) {
@@ -198,14 +163,20 @@ namespace Flock::Graphics {
       return;
     }
 
+    const bool msaa = config_.sample_count > 1;
+
     if (surface_width_ != window_->width() || surface_height_ != window_->height()) {
       WGPU::configure_surface(s_ctx_, surface_, {.width = window_->width(), .height = window_->height()});
       surface_width_ = window_->width(), surface_height_ = window_->height();
+      WGPU::release_texture(msaa_target_);
+      WGPU::release_texture(depth_target_);
+      msaa_target_ = msaa
+                       ? WGPU::create_msaa_target(s_ctx_, surface_width_, surface_height_, config_.sample_count)
+                       : WGPU::Texture{};
+      depth_target_ = WGPU::create_depth_target(s_ctx_, surface_width_, surface_height_, config_.sample_count);
     }
 
-    const bool msaa         = config.sample_count > 1;
-    auto       [r, g, b, a] = config.clear_color.normalized();
-
+    auto    [r, g, b, a] = config_.clear_color.normalized();
     sg_pass pass{};
     pass.action.colors[0] = {
       .load_action  = SG_LOADACTION_CLEAR,
@@ -218,13 +189,14 @@ namespace Flock::Graphics {
       return;
     }
 
-    pass.swapchain.width             = window_->width();
-    pass.swapchain.height            = window_->height();
-    pass.swapchain.sample_count      = config.sample_count;
-    pass.swapchain.color_format      = wgpu_to_sg_format(s_ctx_.color_format);
-    pass.swapchain.depth_format      = SG_PIXELFORMAT_NONE;
-    pass.swapchain.wgpu.render_view  = msaa ? msaa_target_.view : surface_tex->view;
-    pass.swapchain.wgpu.resolve_view = msaa ? surface_tex->view : nullptr;
+    pass.swapchain.width                   = window_->width();
+    pass.swapchain.height                  = window_->height();
+    pass.swapchain.sample_count            = config_.sample_count;
+    pass.swapchain.color_format            = wgpu_to_sg_format(s_ctx_.color_format);
+    pass.swapchain.depth_format            = SG_PIXELFORMAT_DEPTH;
+    pass.swapchain.wgpu.render_view        = msaa ? msaa_target_.view : surface_tex->view;
+    pass.swapchain.wgpu.resolve_view       = msaa ? surface_tex->view : nullptr;
+    pass.swapchain.wgpu.depth_stencil_view = depth_target_.view;
 
     sg_begin_pass(&pass);
 

@@ -37,6 +37,18 @@ namespace Flock {
       elem_count_ = 0;
     }
 
+    [[nodiscard]] usize capacity() const {
+      return buckets_.capacity() + collision_buckets_.capacity();
+    }
+
+    [[nodiscard]] usize len() const {
+      return elem_count_;
+    }
+
+    [[nodiscard]] bool is_empty() const {
+      return len() == 0;
+    }
+
     void rehash() {
       if (buckets_.is_empty()) {
         return;
@@ -123,7 +135,7 @@ namespace Flock {
       Hash  h   = hash(key);
       usize idx = h % buckets_.len();
 
-      Bucket *bucket = buckets_.get(idx);
+      const Bucket *bucket = buckets_.get(idx);
       ASSERT(bucket, "Out of bounds access");
 
       while (bucket && bucket->pair.first != key) {
@@ -183,125 +195,95 @@ namespace Flock {
     }
 
     class Iter {
-      HashMap &map_;
-      Bucket * ptr_;
+      HashMap *map_;
+      usize    idx_;
 
-      Bucket *next_bucket() {
-        auto ptr = ptr_;
-        ++ptr;
-        while (ptr->next_bucket_idx == MAP_INACTIVE_BUCKET) {
-          ++ptr;
+      [[nodiscard]] usize total() const { return map_->buckets_.len() + map_->collision_buckets_.len(); }
 
-          if (ptr == map_.buckets_.end()) {
-            ptr = map_.collision_buckets_.begin();
-          }
+      Bucket &at(usize i) const {
+        const usize n = map_->buckets_.len();
+        return i < n ? map_->buckets_[i] : map_->collision_buckets_[i - n];
+      }
 
-          if (ptr == map_.collision_buckets_.end()) {
-            return nullptr;
-          }
+      void skip() {
+        while (idx_ < total() && at(idx_).next_bucket_idx == MAP_INACTIVE_BUCKET) {
+          ++idx_;
         }
-
-        return ptr;
       }
 
     public:
-      explicit Iter(HashMap &map, Bucket *bucket) : map_(map), ptr_(bucket) {
-        if (bucket && bucket->next_bucket_idx == MAP_INACTIVE_BUCKET) {
-          ptr_ = next_bucket();
-        }
-      }
+      Iter(HashMap &map, usize idx) : map_(&map), idx_(idx) { skip(); }
 
-      Pair<K, V> &operator*() const {
-        return ptr_->pair;
-      }
-
-      Pair<K, V> *operator->() const {
-        return &ptr_->pair;
-      }
+      Pair<K, V> &operator*() const { return at(idx_).pair; }
+      Pair<K, V> *operator->() const { return &at(idx_).pair; }
 
       Iter &operator++() {
-        ptr_ = next_bucket();
+        ++idx_;
+        skip();
         return *this;
       }
 
       Iter operator++(i32) {
         auto tmp = *this;
-        ptr_     = next_bucket();
+        ++*this;
         return tmp;
       }
 
-      friend bool operator==(const Iter &a, const Iter &b) {
-        return a.ptr_ == b.ptr_;
-      }
+      friend bool operator==(const Iter &a, const Iter &b) { return a.idx_ == b.idx_; }
     };
 
     class ConstIter {
-      const HashMap &map_;
-      const Bucket * ptr_;
+      const HashMap *map_;
+      usize          idx_;
 
-      const Bucket *next_bucket() {
-        auto ptr = ptr_;
-        ++ptr;
-        while (ptr->next_bucket_idx == MAP_INACTIVE_BUCKET) {
-          ++ptr;
+      [[nodiscard]] usize total() const { return map_->buckets_.len() + map_->collision_buckets_.len(); }
 
-          if (ptr == map_.buckets_.end()) {
-            ptr = map_.collision_buckets_.begin();
-          }
+      const Bucket &at(usize i) const {
+        const usize n = map_->buckets_.len();
+        return i < n ? map_->buckets_[i] : map_->collision_buckets_[i - n];
+      }
 
-          if (ptr == map_.collision_buckets_.end()) {
-            return nullptr;
-          }
+      void skip() {
+        while (idx_ < total() && at(idx_).next_bucket_idx == MAP_INACTIVE_BUCKET) {
+          ++idx_;
         }
-
-        return ptr;
       }
 
     public:
-      explicit ConstIter(const HashMap &map, const Bucket *bucket) : map_(map), ptr_(bucket) {
-        if (bucket->next_bucket_idx == MAP_INACTIVE_BUCKET) {
-          ptr_ = next_bucket();
-        }
-      }
+      ConstIter(const HashMap &map, usize idx) : map_(&map), idx_(idx) { skip(); }
 
-      const Pair<K, V> &operator*() const {
-        return ptr_->pair;
-      }
-
-      const Pair<K, V> *operator->() const {
-        return &ptr_->pair;
-      }
+      const Pair<K, V> &operator*() const { return at(idx_).pair; }
+      const Pair<K, V> *operator->() const { return &at(idx_).pair; }
 
       ConstIter &operator++() {
-        ptr_ = next_bucket();
+        ++idx_;
+        skip();
         return *this;
       }
 
       ConstIter operator++(i32) {
         auto tmp = *this;
-        ptr_     = next_bucket();
+        ++*this;
         return tmp;
       }
 
-      friend bool operator==(const ConstIter &a, const ConstIter &b) {
-        return a.ptr_ == b.ptr_;
-      }
+      friend bool operator==(const ConstIter &a, const ConstIter &b) { return a.idx_ == b.idx_; }
     };
 
     Iter begin() {
-      return Iter(*this, buckets_.begin());
+      return Iter(*this, 0);
     }
 
     Iter end() {
-      return Iter(*this, collision_buckets_.end());
+      return Iter(*this, buckets_.len() + collision_buckets_.len());
     }
 
     ConstIter begin() const {
-      return ConstIter(*this, buckets_.begin());
+      return ConstIter(*this, 0);
     }
 
     ConstIter end() const {
-      return ConstIter(*this, collision_buckets_.end());
+      return ConstIter(*this, buckets_.len() + collision_buckets_.len());
     }
 
   private:

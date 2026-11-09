@@ -17,6 +17,8 @@ namespace Flock {
 
   void App::run() {
     start();
+
+
     while (is_running()) {
       update();
       render();

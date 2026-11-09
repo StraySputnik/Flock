@@ -52,8 +52,8 @@ namespace Flock {
 
     ~BumpAllocator() override;
 
-    void *alloc(usize size, usize align = alignof(usize)) override;
-    void *realloc(void *src, usize src_size, usize dest_size, usize align = alignof(usize)) override;
+    void *alloc(usize size, usize align) override;
+    void *realloc(void *src, usize src_size, usize dest_size, usize align) override;
     void  release(void *ptr, usize size) override;
     void  clear() override;
 

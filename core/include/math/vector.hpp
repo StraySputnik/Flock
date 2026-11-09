@@ -228,7 +228,7 @@ namespace Flock::Math {
 
     Vector3 normalized() const {
       auto mag = magnitude();
-      return Vector2{
+      return Vector3{
         .x = x / mag,
         .y = y / mag,
         .z = z / mag,
@@ -242,7 +242,7 @@ namespace Flock::Math {
     Vector3 cross(const Vector3 &other) const {
       return {
         .x = y * other.z - z * other.y,
-        .y = x * other.z - z * other.x,
+        .y = z * other.x - x * other.z,
         .z = x * other.y - y * other.x
       };
     }
@@ -405,7 +405,7 @@ namespace Flock::Math {
 
     Vector4 normalized() const {
       auto mag = magnitude();
-      return Vector2{
+      return Vector4{
         .x = x / mag,
         .y = y / mag,
         .z = z / mag,

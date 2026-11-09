@@ -10,6 +10,8 @@
 #include "debug/log.hpp"
 #include "file_system/directory.hpp"
 #include "file_system/file.hpp"
+#include "json/json.hpp"
+#include "serial/json/json_serial.hpp"
 
 namespace Flock::Asset {
   Maybe<AssetLoader> AssetLoader::create(const char *asset_directory) {
@@ -37,6 +39,16 @@ namespace Flock::Asset {
       if (filepath.extension() == "obj") {
         auto path = filepath.relative_to(asset_directory).get();
         loader.load<Mesh>(path);
+      }
+
+      if (filepath.extension() == "wgsl") {
+        auto path = filepath.relative_to(asset_directory).get();
+        loader.load<Pipeline>(path);
+      }
+
+      if (filepath.extension() == "mat") {
+        auto path = filepath.relative_to(asset_directory).get();
+        loader.load<Material>(path);
       }
     }
 
@@ -73,6 +85,10 @@ namespace Flock::Asset {
         unload<Image>({.id = id});
       } else if (asset.type == AssetType::Mesh) {
         unload<Mesh>({.id = id});
+      } else if (asset.type == AssetType::Pipeline) {
+        unload<Pipeline>({.id = id});
+      } else if (asset.type == AssetType::Material) {
+        unload<Material>({.id = id});
       } else {
         ASSERT(false, "Unknown asset type");
       }
@@ -189,7 +205,7 @@ namespace Flock::Asset {
     return result;
   }
 
-  Maybe<Shader> AssetLoader::load_shader_impl(const Filepath &asset_path) {
+  Maybe<Pipeline> AssetLoader::load_shader_impl(const Filepath &asset_path) {
     using FileSystem::File;
     Maybe<File> file = File::open(asset_path, FileMode::ReadOnly);
     if (!file) {
@@ -202,10 +218,89 @@ namespace Flock::Asset {
       return {};
     }
 
-    Shader result{};
-    result.text = string.move();
+    Pipeline result{};
+    result.shader = string.move();
 
     LOG_INF("Loaded shader %s", asset_path.to_string().c_str());
+    return result;
+  }
+
+  Maybe<Material> AssetLoader::load_material_impl(const Filepath &asset_path) {
+    using FileSystem::File;
+    Maybe<File> file = File::open(asset_path, FileMode::ReadOnly);
+    if (!file) {
+      return {};
+    }
+
+    Maybe<String> maybe = file->to_string();
+    if (!maybe) {
+      LOG_ERR("Failed to load material %s: Failed to allocate memory", asset_path.to_string().c_str());
+      return {};
+    }
+
+    const String             string = maybe.move();
+    const Maybe<JSON::Value> value  = JSON::parse(string);
+    if (!value || value->type() != JSON::Type::Object) {
+      LOG_ERR("Failed to load material %s: Failed to parse material data", asset_path.to_string().c_str());
+      return {};
+    }
+
+    JSON::Object obj = *value->as_object();
+
+    Material                   result{};
+    Serial::JSON::Deserializer deserializer = Serial::JSON::Deserializer::create(obj);
+    if (!deserializer.serialize("pipeline", result.pipeline)) {
+      LOG_ERR("Failed to load material %s: failed to deserialize pipeline", asset_path.to_string().c_str());
+      return {};
+    }
+
+    if (!obj.has("uniforms") || !obj["uniforms"].as_object()) {
+      LOG_ERR("Failed to load material %s: failed to deserialize uniforms", asset_path.to_string().c_str());
+      return {};
+    }
+
+    JSON::Object uniforms = *obj["uniforms"].as_object();
+    for (const auto &[key, val]: uniforms) {
+      if (val.type() == JSON::Type::Integer) {
+        result.uniforms[key] = Graphics::Uniform::from_i32(*val.as_integer());
+      } else if (val.type() == JSON::Type::Floating) {
+        result.uniforms[key] = Graphics::Uniform::from_f32(*val.as_floating());
+      } else if (val.type() == JSON::Type::Object) {
+        JSON::Object o = *val.as_object();
+        if (o.has("x") && o.has("y") && o.has("z") && o.has("w")) {
+          f32 x = *o["x"].as_floating();
+          f32 y = *o["y"].as_floating();
+          f32 z = *o["z"].as_floating();
+          f32 w = *o["w"].as_floating();
+
+          result.uniforms[key] = Graphics::Uniform::from_vec4f(Vector4f::xyzw(x, y, z, w));
+        } else if (o.has("x") && o.has("y") && o.has("z")) {
+          f32 x = *o["x"].as_floating();
+          f32 y = *o["y"].as_floating();
+          f32 z = *o["z"].as_floating();
+
+          result.uniforms[key] = Graphics::Uniform::from_vec3f(Vector3f::xyz(x, y, z));
+        } else if (o.has("x") && o.has("y")) {
+          f32 x = *o["x"].as_floating();
+          f32 y = *o["y"].as_floating();
+          f32 z = *o["z"].as_floating();
+
+          result.uniforms[key] = Graphics::Uniform::from_vec2f(Vector2f::xy(x, y));
+        } else {
+          // TODO: handle matrices?
+
+          LOG_ERR(
+            "Failed to load material %s: failed to deserialize uniform %s",
+            asset_path.to_string().c_str(),
+            key.c_str()
+          );
+
+          return {};
+        }
+      }
+    }
+
+    LOG_INF("Loaded material %s", asset_path.to_string().c_str());
     return result;
   }
 }

@@ -72,6 +72,17 @@ namespace Flock::Math {
       return mat;
     }
 
+    static Matrix4 perspective(const T fov_degrees, const T aspect_ratio, const T near, const T far) {
+      const T t = 1.0 / tanf(fov_degrees * DEG_TO_RAD * 0.5);
+      Matrix4   m = Matrix4::zero();
+      m.get(0, 0) = t / aspect_ratio;
+      m.get(1, 1) = t;
+      m.get(2, 2) = far / (far - near);
+      m.get(2, 3) = -near * far / (far - near);
+      m.get(3, 2) = 1.0;
+      return m;
+    }
+
     static Matrix4 from_array(T array[16]) {
       Matrix4 mat{};
       for (u8 col = 0; col < 4; col++) {

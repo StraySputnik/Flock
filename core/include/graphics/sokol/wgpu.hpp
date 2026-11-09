@@ -46,4 +46,5 @@ namespace Flock::Graphics::Sokol::WGPU {
   Maybe<i32>     get_surface_format(const Context &ctx, const Surface &surface);
   Maybe<Texture> get_surface_texture(const Surface &surface);
   Texture        create_msaa_target(const Context &ctx, u32 width, u32 height, usize sample_count);
+  Texture        create_depth_target(const Context &ctx, u32 width, u32 height, usize sample_count);
 }

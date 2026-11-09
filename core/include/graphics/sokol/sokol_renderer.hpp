@@ -6,16 +6,14 @@
 
 namespace Flock::Graphics::Sokol {
   class FLK_API Renderer : public Flock::Renderer {
-  public:
-    RenderConfig config = {};
-
-  private:
     inline static WGPU::Context s_ctx_            = {};
     inline static usize         s_renderer_count_ = 0;
 
     Window *      window_         = nullptr;
+    RenderConfig  config_         = {};
     WGPU::Surface surface_        = {};
     WGPU::Texture msaa_target_    = {};
+    WGPU::Texture depth_target_   = {};
     u32           surface_width_  = 0;
     u32           surface_height_ = 0;
 
@@ -36,9 +34,7 @@ namespace Flock::Graphics::Sokol {
 
     [[nodiscard]] bool is_valid() const;
 
-    GPUMesh    upload_mesh(const Mesh &mesh) override;
-    GPUImage2D upload_texture(const Image &image) override;
-
+    void configure(const RenderConfig &config) override;
     void render(const RenderScene &scene) override;
   };
 }
