@@ -283,7 +283,6 @@ namespace Flock::Asset {
         } else if (o.has("x") && o.has("y")) {
           f32 x = *o["x"].as_floating();
           f32 y = *o["y"].as_floating();
-          f32 z = *o["z"].as_floating();
 
           result.uniforms[key] = Graphics::Uniform::from_vec2f(Vector2f::xy(x, y));
         } else {
